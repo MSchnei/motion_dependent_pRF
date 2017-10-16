@@ -38,7 +38,7 @@ innerBorder = 0.5  # distance from screen center in deg
 # set background color
 backgrColor = [-0.5, -0.5, -0.5]
 # set dot color
-dotColor = np.multiply(backgrColor, -1)  # from -1 (black) to 1 (white)
+dotColor = [1, 1, 1]  # from -1 (black) to 1 (white)
 
 
 # %%
@@ -193,7 +193,7 @@ logFile.write('dotSize=' + unicode(dotSize) + '\n')
 logFile.write('fieldSizeRadius=' + unicode(FieldSizeRadius) + '\n')
 
 pixel = 0.1
-size = 48
+size = 64
 sigma = 0.05
 
 
@@ -231,27 +231,40 @@ texture = makeLoG(size, sigma, pixel)
 # bring texture in range of -1 and 1
 texture = d3_scale(texture, out_range=(-1, 1))
 # binarize
-texture[np.greater_equal(texture, 0)] = 1
-texture[np.less(texture, 0)] = -1
+#texture[np.greater_equal(texture, 0)] = 1
+#texture[np.less(texture, 0)] = -1
 
-texture = np.ones([48,48])
+#texture = np.ones([48,48])
 
 # initialise moving dot stimuli
 dotPatch = visual.ElementArrayStim(
     myWin,
+    units='deg',
     fieldPos=(0.0, 0.0),
-    autoLog=False,
-    name='dotPatch',
+    fieldSize=FieldSizeRadius*2,
     fieldShape='circle',
-    elementTex=texture,
-    elementMask='none',
-    texRes=48,
     nElements=int(nDots),
     sizes=dotSize,
-    units='deg',
-    fieldSize=FieldSizeRadius*2,
-    colors=dotColor
+    xys=None,
+    colors=(1.0, 1.0, 1.0),
+    colorSpace='rgb',
+    opacities=1.0,
+    depths=0,
+    fieldDepth=0,
+    oris=0,
+    sfs=1/dotSize,
+    elementTex=texture,
+    elementMask=None,
+    contrs=1,
+    phases=0,
+    texRes=64,
+    interpolate=False,
+    name='rdk',
+    autoLog=None,
+    maskParams=None
     )
+
+dotPatch.setTex(texture)
 
 # fixation dot
 dotFix = visual.Circle(
