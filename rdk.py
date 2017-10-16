@@ -36,7 +36,7 @@ FieldSizeRadius = 5  # radius in deg
 innerBorder = 0.5  # distance from screen center in deg
 
 # set background color
-backgrColor = [-0.5, -0.5, -0.5]
+backgrColor = [0.0, 0.0, 0.0]
 # set dot color
 dotColor = [1, 1, 1]  # from -1 (black) to 1 (white)
 
@@ -192,18 +192,14 @@ logFile.write('speed=' + unicode(dotSpeed) + '\n')
 logFile.write('dotSize=' + unicode(dotSize) + '\n')
 logFile.write('fieldSizeRadius=' + unicode(FieldSizeRadius) + '\n')
 
-pixel = 0.1
-size = 64
-sigma = 0.05
-
 
 def makeLoG(size, sigma, pixel):
     "Function that creates a Laplacian of Gaussian"
     x, y = np.meshgrid(np.linspace(-pixel, pixel, size),
                        np.linspace(-pixel, pixel, size))
-    part1 = (1/sigma**2)
-    part2 = (1-((x**2 + y**2)/sigma**2)) 
-    part3 = np.exp(-(x**2 + y**2)/(2*sigma**2))
+    part1 = (1/np.square(sigma))
+    part2 = (1-((np.square(x) + np.square(y))/np.square(sigma)))
+    part3 = np.exp(-(np.square(x) + np.square(y))/(2*np.square(sigma)))
     return part1 * part2 * part3
 
 
@@ -227,14 +223,16 @@ def d3_scale(dat, out_range=(-1, 1)):
     return interp(uninterp(dat)).reshape(origShape)
 
 # create texture as a Laplacian of Gaussian (LoG)
-texture = makeLoG(size, sigma, pixel)
+size = 64
+sigma = 0.05
+texture = makeLoG(size, sigma, dotSize)
 # bring texture in range of -1 and 1
-texture = d3_scale(texture, out_range=(-1, 1))
-# binarize
-#texture[np.greater_equal(texture, 0)] = 1
-#texture[np.less(texture, 0)] = -1
+#texture = d3_scale(texture, out_range=(-1, 1))
+texture = texture/np.max(texture)
 
-#texture = np.ones([48,48])
+
+contrasts = np.ones(int(nDots))
+contrasts[np.random.choice(len(contrasts), len(contrasts)/2.)] = -1 
 
 # initialise moving dot stimuli
 dotPatch = visual.ElementArrayStim(
@@ -254,8 +252,8 @@ dotPatch = visual.ElementArrayStim(
     oris=0,
     sfs=1/dotSize,
     elementTex=texture,
-    elementMask=None,
-    contrs=1,
+    elementMask='circle',
+    contrs=contrasts,
     phases=0,
     texRes=64,
     interpolate=False,
@@ -419,7 +417,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to zero
         loopDotSpeed = 0
         # set loopDotLife to inf
-        loopDotLife = dotLife
+        loopDotLife = np.inf
         # set opacity to 1 for all static
         dotPatch.opacities = 1
 
