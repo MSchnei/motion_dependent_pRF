@@ -147,7 +147,7 @@ myWin = visual.Window(
 
 conditions = np.array([-1, 0, 1, 2, 1, 2, 1, 2, 0, -1])
 
-durations = np.array([2, 10, 10, 10, 2, 2, 2, 2, 2, 2])
+durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 targets = np.array([5, 10])
 
@@ -203,44 +203,23 @@ def makeLoG(size, sigma, pixel):
     part3 = np.exp(-(np.square(x) + np.square(y))/(2*np.square(sigma)))
     return part1 * part2 * part3
 
-
-def d3_scale(dat, out_range=(-1, 1)):
-    "Function that normalizes to a desired shape"
-    origShape= dat.shape
-    dat = dat.flatten()
-    domain = [np.min(dat, axis=0), np.max(dat, axis=0)]
-
-    def interp(x):
-        return out_range[0] * (1.0 - x) + out_range[1] * x
-
-    def uninterp(x):
-        b = 0
-        if (domain[1] - domain[0]) != 0:
-            b = domain[1] - domain[0]
-        else:
-            b =  1.0 / domain[1]
-        return (x - domain[0]) / b
-
-    return interp(uninterp(dat)).reshape(origShape)
-
 # create texture as a Laplacian of Gaussian (LoG)
 size = 64
 sigma = 0.05
 texture = makeLoG(size, sigma, dotSize)
+
 # bring texture in range of -1 and 1
-#texture = d3_scale(texture, out_range=(-1, 1))
 texture = texture/np.max(texture)
 
 # invert the contrast for some of the dots
 contrasts = np.ones(int(nDots))
 contrasts[np.random.choice(len(contrasts), len(contrasts)/2.)] = -1
 
-
+# create circular mask for dots
 mask = np.ones((size, size))
 x, y = np.meshgrid(np.arange(-size/2., size/2.)+0.5,
                    np.arange(-size/2., size/2.)+0.5)
 mask[np.greater_equal(np.sqrt(np.square(x) + np.square(y)), size/2.)] = 0
-
 
 # initialise moving dot stimuli
 dotPatch = visual.ElementArrayStim(
@@ -353,15 +332,18 @@ def dots_init(nDots):
     frameCount = np.random.uniform(0, dotLife, size=len(dotsX)).astype(int)
     return dotsX, dotsY, frameCount
 
-# %%
-def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
-                frameDeathAfter=np.inf):
-    # convert to polar coordinates
+# %% functions to update dot positions
+# function that updates according to the wrap-around procedure described
+# in clifford et al.
+def dots_update_wrap(dotsX, dotsY, dotSpeed=dotSpeed):
+        # convert to polar coordinates
     dotsTheta, dotsRadius = cart2pol(dotsX, dotsY)
     # update radius
     dotsRadius = (dotsRadius+dotSpeed)
-    # decide which dots die
+    # prepare array for dots that will die from falling out
     lgcOutFieldDots = np.zeros(len(dotsTheta), dtype='bool')
+
+    # decide which dots fall out during expansion
     if dotSpeed > 0:
         # create lgc for elems where radius too large (expansion)
         lgcOutFieldDots = (dotsRadius >= FieldSizeRadius)
@@ -385,6 +367,8 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
              )*np.random.rand(sum(lgcBdots)) +
             np.square(alphaExp)*np.square(innerBorder)
             )
+
+    # decide which dots fall out during contraction
     elif dotSpeed < 0:
         # create lgc for elems where radius too small (contraction)
         lgcOutFieldDots = (dotsRadius <= innerBorder)
@@ -408,21 +392,58 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
              )*np.random.rand(sum(lgcBdots)) +
             np.square(innerBorder)
             )
-    # create logical for where frameCount too high
-    lgcFrameDeath = (frameCount >= frameDeathAfter)
-    # calculate new radius for dots that died from high age
-    dotsRadius[lgcFrameDeath] = np.sqrt(
-        (np.square(FieldSizeRadius) - np.square(innerBorder)) *
-        np.random.rand(sum(lgcFrameDeath)) + np.square(innerBorder))
-    # calculate new angle for all dots that died
-    lgcDeath = np.logical_or(lgcOutFieldDots, lgcFrameDeath)
-    dotsTheta[lgcDeath] = np.random.rand(sum(lgcDeath))*360
+
+    # calculate new angle for all dots that died (from age or falling)
+    dotsTheta[lgcOutFieldDots] = np.random.uniform(
+        0, 360, sum(lgcOutFieldDots))
     # convert from polar to Cartesian
     dotsX, dotsY = pol2cart(dotsTheta, dotsRadius)
-    # increase frameCount for every elements
+
+    return dotsX, dotsY
+
+
+# function that updates according to dot life time
+def dots_update_lifetime(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
+                         frameDeathAfter=np.inf):
+    # convert to polar coordinates
+    dotsTheta, dotsRadius = cart2pol(dotsX, dotsY)
+    # update radius
+    dotsRadius = (dotsRadius+dotSpeed)
+    # update frameCount
     frameCount += 1
-    # set the counter for newborn dots to zero
+    # prepare array for dots that will die from falling out
+    lgcOutFieldDots = np.zeros(len(dotsTheta), dtype='bool')
+
+    # decide which dots fall out during expansion
+    if dotSpeed > 0:
+        # create lgc for elems where radius too large (expansion)
+        lgcOutFieldDots = (dotsRadius >= FieldSizeRadius)
+    # decide which dots fall out during contraction
+    elif dotSpeed < 0:
+        # create lgc for elems where radius too small (contraction)
+        lgcOutFieldDots = (dotsRadius <= innerBorder)
+
+    # decide which dots will die because they got too old
+    lgcFrameDeath = (frameCount >= frameDeathAfter)
+    # combine logicals from dots that died due to fell out and high age
+    lgcDeath = np.logical_or(lgcOutFieldDots, lgcFrameDeath)
+
+    # calculate new radius for dots that died
+    dotsRadius[lgcDeath] = np.sqrt(
+        (np.square(FieldSizeRadius) - np.square(innerBorder)) *
+        np.random.rand(sum(lgcDeath)) + np.square(innerBorder))
+    # calculate new angle for all dots that died (from age or falling)
+    dotsTheta[lgcDeath] = np.random.uniform(0, 360, sum(lgcDeath))
+
+    # reset the counter for newborn dots that died of high age
     frameCount[lgcFrameDeath] = 0
+    # reset the counter for newborn dots that died from falling out
+    frameCount[lgcOutFieldDots] = np.random.uniform(
+        0, dotLife, size=sum(lgcOutFieldDots)).astype(int)
+
+    # convert from polar to Cartesian
+    dotsX, dotsY = pol2cart(dotsTheta, dotsRadius)
+
     return dotsX, dotsY, frameCount
 
 # target function
@@ -492,7 +513,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to zero
         loopDotSpeed = 0
         # set loopDotLife to inf
-        loopDotLife = np.inf
+        loopDotLife = dotLife
         # set opacity to 1 for all static
         dotPatch.opacities = 1
 
@@ -501,7 +522,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to dotSpeed
         loopDotSpeed = dotSpeed
         # set loopDotLife to dotLife
-        loopDotLife = np.inf  # dotLife
+        loopDotLife = dotLife  # dotLife
         # set opacaities
         dotPatch.opacities = 1
 
@@ -510,7 +531,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to dotSpeed
         loopDotSpeed = -dotSpeed
         # set loopDotLife to dotLife
-        loopDotLife = np.inf  # dotLife
+        loopDotLife = dotLife  # dotLife
         # set opacaities
         dotPatch.opacities = 1
 
@@ -518,9 +539,11 @@ while clock.getTime() < totalTime:
         # update dots
         t = clock.getTime()
 
-        dotsX, dotsY, frameCntsIn = dots_update(
+        dotsX, dotsY, frameCntsIn = dots_update_lifetime(
             dotsX, dotsY, frameCntsIn, dotSpeed=loopDotSpeed,
             frameDeathAfter=loopDotLife)
+
+#        dotsX, dotsY = dots_update_wrap(dotsX, dotsY, dotSpeed=loopDotSpeed)
 
         dotPatch.setXYs(np.array([dotsX, dotsY]).transpose())
 
@@ -752,3 +775,15 @@ except:
 # %%
 """FINISH"""
 core.quit()
+
+#numElem = [len(bla) for bla in radi]
+#numElem = np.array(numElem)
+#numElem = numElem[:200]
+#
+#items = [item for sublist in radi for item in sublist]
+#items = np.array(items)
+#np.diff(np.histogram(items)[0])
+
+
+
+
