@@ -22,7 +22,7 @@ expectedTR = 2  # in s
 
 # set properties for moving dots
 # The number of dots
-nDots = 200
+nDots = 600
 # specify speed in units per frame
 dotSpeed = 8  # deg per s [8]
 # dot Life, how long should a dot life
@@ -183,7 +183,8 @@ logging.setDefaultClock(clock)
 
 # %%
 """STIMULI"""
-# divide the dotSpeed by the refresh rate
+# divide the dotSpeed by the refresh rate to see how many units (deg) the dot
+# travels per frame, not per second
 dotSpeed = dotSpeed / refr_rate
 
 # log stimulus properties defined above
@@ -230,9 +231,16 @@ texture = makeLoG(size, sigma, dotSize)
 #texture = d3_scale(texture, out_range=(-1, 1))
 texture = texture/np.max(texture)
 
-
+# invert the contrast for some of the dots
 contrasts = np.ones(int(nDots))
-contrasts[np.random.choice(len(contrasts), len(contrasts)/2.)] = -1 
+contrasts[np.random.choice(len(contrasts), len(contrasts)/2.)] = -1
+
+
+mask = np.ones((size, size))
+x, y = np.meshgrid(np.arange(-size/2., size/2.)+0.5,
+                   np.arange(-size/2., size/2.)+0.5)
+mask[np.greater_equal(np.sqrt(np.square(x) + np.square(y)), size/2.)] = 0
+
 
 # initialise moving dot stimuli
 dotPatch = visual.ElementArrayStim(
@@ -252,7 +260,7 @@ dotPatch = visual.ElementArrayStim(
     oris=0,
     sfs=1/dotSize,
     elementTex=texture,
-    elementMask='circle',
+    elementMask=mask,
     contrs=contrasts,
     phases=0,
     texRes=64,
@@ -307,19 +315,46 @@ triggerText = visual.TextStim(
 # %%
 """FUNCTIONS"""
 
-# function to determine initial dot positions
+# %% calculate probability for expanding dots
+
+# distance that dots travel from inner border on one frame
+Sexp = innerBorder + dotSpeed
+# calculate alpha
+alphaExp = Sexp/innerBorder
+# probability to be repositioned in area A
+pAexp = alphaExp*(Sexp**2-innerBorder**2)/(
+    (alphaExp-1)*(FieldSizeRadius**2-Sexp**2)+alphaExp*(
+        Sexp**2-innerBorder**2))
+
+# %% calculate probability for contracting dots
+
+# distance that dots travel from inner border on one frame
+Scontr = FieldSizeRadius - dotSpeed
+# calculate alpha
+alphaContr = FieldSizeRadius/Scontr
+# probability to be repositioned in area A
+pAcontr = alphaContr*(FieldSizeRadius**2-Scontr**2)/(
+    alphaContr*(FieldSizeRadius**2-Scontr**2) + (alphaContr-1)*(
+        Scontr**2-innerBorder**2))
+
+
+# %% function to determine initial dot positions
 def dots_init(nDots):
-    # specify the angle for each dot
-    dotsTheta = np.random.rand(nDots)*360
-    # specify the distance to the centre
-    dotsRadius = (np.random.rand(nDots)**0.5)*FieldSizeRadius
-    # convert
+    # initialise angle for each dot as a uniform distribution
+    dotsTheta = np.random.uniform(0, 360, nDots)
+    # initialise radius for each dot
+    # in order to get an overall uniform distribution, the radius must not be
+    # picked from a uniform distribution, but as pdf_r = (2/R^2)*r
+    dotsRadius = np.sqrt(
+        (np.square(FieldSizeRadius) - np.square(innerBorder)) *
+        np.random.rand(nDots) + np.square(innerBorder))
+    # convert from polar to Cartesian
     dotsX, dotsY = pol2cart(dotsTheta, dotsRadius)
     # create array frameCount
     frameCount = np.random.uniform(0, dotLife, size=len(dotsX)).astype(int)
     return dotsX, dotsY, frameCount
 
-
+# %%
 def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
                 frameDeathAfter=np.inf):
     # convert to polar coordinates
@@ -331,23 +366,52 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
     if dotSpeed > 0:
         # create lgc for elems where radius too large
         lgcOutFieldDots = (dotsRadius >= FieldSizeRadius)
+        # how many dots died because they fell out?
+        numDeadDots = np.sum(lgcOutFieldDots)
+        lgcAdots = lgcOutFieldDots[:int(numDeadDots*pAexp)]
+        # calculate new radius for dots appearing in region A
+        dotsRadius[lgcAdots] = innerBorder*np.sqrt(
+            (np.square(alphaExp)-1)*np.random.rand(sum(lgcAdots))+1)
+        lgcBdots = lgcOutFieldDots[int(numDeadDots*pAexp):]
+        # calculate new radius for dots appearing in region B
+        dotsRadius[lgcBdots] = np.sqrt(
+            (np.square(FieldSizeRadius) -
+             np.square(alphaExp)*np.square(innerBorder)
+             )*np.random.rand(sum(lgcBdots)) +
+            np.square(alphaExp)*np.square(innerBorder)
+            )
     elif dotSpeed < 0:
         # create lgc for elems where radius too small
         lgcOutFieldDots = (dotsRadius <= innerBorder)
+        # how many dots died because they fell out?
+        numDeadDots = np.sum(lgcOutFieldDots)
+        lgcAdots = lgcOutFieldDots[:int(numDeadDots*pAcontr)]
+        # calculate new radius for dots appearing in region A
+        dotsRadius[lgcAdots] = Scontr*np.sqrt(
+            (np.square(alphaContr)-1)*np.random.rand(sum(lgcAdots))+1)
+
+        # calculate new radius for dots appearing in region B
+        dotsRadius[lgcBdots] = np.sqrt(
+            (np.square(Scontr) -
+             np.square(innerBorder)
+             )*np.random.rand(sum(lgcBdots)) +
+            np.square(innerBorder)
+            )
     # create logical for where frameCount too high
     lgcFrameDeath = (frameCount >= frameDeathAfter)
-    # combine logicals
+    # calculate new radius for dots that died from high age
+    dotsRadius[lgcFrameDeath] = np.sqrt(
+        (np.square(FieldSizeRadius) - np.square(innerBorder)) *
+        np.random.rand(sum(lgcFrameDeath)) + np.square(innerBorder))
+    # calculate new angle for all dots that died
     lgcDeath = np.logical_or(lgcOutFieldDots, lgcFrameDeath)
-    # replace dead dots
-    dotsRadius[lgcDeath] = np.random.uniform(innerBorder, FieldSizeRadius,
-                                             size=sum(lgcDeath))
     dotsTheta[lgcDeath] = np.random.rand(sum(lgcDeath))*360
-    # convert
+    # convert from polar to Cartesian
     dotsX, dotsY = pol2cart(dotsTheta, dotsRadius)
     # increase frameCount for every elements
     frameCount += 1
     # set the counter for newborn dots to zero
-    frameCount[lgcDeath] = 0
+    frameCount[lgcFrameDeath] = 0
     return dotsX, dotsY, frameCount
 
 # target function
