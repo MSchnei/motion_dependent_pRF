@@ -147,7 +147,7 @@ myWin = visual.Window(
 
 conditions = np.array([-1, 0, 1, 2, 1, 2, 1, 2, 0, -1])
 
-durations = np.array([2, 10, 2, 2, 2, 2, 2, 2, 2, 2])
+durations = np.array([2, 10, 10, 10, 2, 2, 2, 2, 2, 2])
 
 targets = np.array([5, 10])
 
@@ -337,13 +337,6 @@ pAcontr = alphaContr*(FieldSizeRadius**2-Scontr**2)/(
     alphaContr*(FieldSizeRadius**2-Scontr**2) + (alphaContr-1)*(
         Scontr**2-innerBorder**2))
 
-
-
-np.random.choice(np.arange(2), p=[pAexp, 1-pAexp], size=10)
-np.random.choice(np.arange(2), p=[pAcontr, 1-pAcontr])
-
-np.random.choice(
-
 # %% function to determine initial dot positions
 def dots_init(nDots):
     # initialise angle for each dot as a uniform distribution
@@ -373,15 +366,18 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
         # create lgc for elems where radius too large (expansion)
         lgcOutFieldDots = (dotsRadius >= FieldSizeRadius)
         # how many dots should go in area A?
-        numDotsAreaA = np.sum(np.random.choice(np.arange(2),
-            p=[1-pAexp, pAexp], size=np.sum(lgcOutFieldDots)))
+        numDotsAreaA = np.sum(
+            np.random.choice(np.arange(2), p=[1-pAexp, pAexp],
+                             size=np.sum(lgcOutFieldDots)))
         # get logical for area A
-        lgcAdots = lgcOutFieldDots[:numDotsAreaA]
+        lgcAdots = np.zeros(len(dotsTheta), dtype='bool')
+        lgcAdots[np.where(lgcOutFieldDots)[0][:numDotsAreaA]] = True
         # calculate new radius for dots appearing in region A
         dotsRadius[lgcAdots] = innerBorder*np.sqrt(
             (np.square(alphaExp)-1)*np.random.rand(sum(lgcAdots))+1)
         # get logical for area B
-        lgcBdots = lgcOutFieldDots[numDotsAreaA:]
+        lgcBdots = np.zeros(len(dotsTheta), dtype='bool')
+        lgcBdots[np.where(lgcOutFieldDots)[0][numDotsAreaA:]] = True
         # calculate new radius for dots appearing in region B
         dotsRadius[lgcBdots] = np.sqrt(
             (np.square(FieldSizeRadius) -
@@ -393,15 +389,18 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
         # create lgc for elems where radius too small (contraction)
         lgcOutFieldDots = (dotsRadius <= innerBorder)
         # how many dots should go in area A?
-        numDotsAreaA = np.sum(np.random.choice(np.arange(2),
-            p=[1-pAcontr, pAcontr], size=np.sum(lgcOutFieldDots)))
+        numDotsAreaA = np.sum(
+            np.random.choice(np.arange(2), p=[1-pAcontr, pAcontr],
+                             size=np.sum(lgcOutFieldDots)))
         # get logical for area A
-        lgcAdots = lgcOutFieldDots[:numDotsAreaA]
+        lgcAdots = np.zeros(len(dotsTheta), dtype='bool')
+        lgcAdots[np.where(lgcOutFieldDots)[0][:numDotsAreaA]] = True
         # calculate new radius for dots appearing in region A
         dotsRadius[lgcAdots] = Scontr*np.sqrt(
             (np.square(alphaContr)-1)*np.random.rand(sum(lgcAdots))+1)
         # get logical for area B
-        lgcBdots = lgcOutFieldDots[numDotsAreaA:]
+        lgcBdots = np.zeros(len(dotsTheta), dtype='bool')
+        lgcBdots[np.where(lgcOutFieldDots)[0][numDotsAreaA:]] = True
         # calculate new radius for dots appearing in region B
         dotsRadius[lgcBdots] = np.sqrt(
             (np.square(Scontr) -
@@ -502,7 +501,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to dotSpeed
         loopDotSpeed = dotSpeed
         # set loopDotLife to dotLife
-        loopDotLife = dotLife
+        loopDotLife = np.inf  # dotLife
         # set opacaities
         dotPatch.opacities = 1
 
@@ -511,7 +510,7 @@ while clock.getTime() < totalTime:
         # set loopDotSpeed to dotSpeed
         loopDotSpeed = -dotSpeed
         # set loopDotLife to dotLife
-        loopDotLife = dotLife
+        loopDotLife = np.inf  # dotLife
         # set opacaities
         dotPatch.opacities = 1
 
