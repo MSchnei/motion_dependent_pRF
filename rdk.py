@@ -338,6 +338,12 @@ pAcontr = alphaContr*(FieldSizeRadius**2-Scontr**2)/(
         Scontr**2-innerBorder**2))
 
 
+
+np.random.choice(np.arange(2), p=[pAexp, 1-pAexp], size=10)
+np.random.choice(np.arange(2), p=[pAcontr, 1-pAcontr])
+
+np.random.choice(
+
 # %% function to determine initial dot positions
 def dots_init(nDots):
     # initialise angle for each dot as a uniform distribution
@@ -364,15 +370,18 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
     # decide which dots die
     lgcOutFieldDots = np.zeros(len(dotsTheta), dtype='bool')
     if dotSpeed > 0:
-        # create lgc for elems where radius too large
+        # create lgc for elems where radius too large (expansion)
         lgcOutFieldDots = (dotsRadius >= FieldSizeRadius)
-        # how many dots died because they fell out?
-        numDeadDots = np.sum(lgcOutFieldDots)
-        lgcAdots = lgcOutFieldDots[:int(numDeadDots*pAexp)]
+        # how many dots should go in area A?
+        numDotsAreaA = np.sum(np.random.choice(np.arange(2),
+            p=[1-pAexp, pAexp], size=np.sum(lgcOutFieldDots)))
+        # get logical for area A
+        lgcAdots = lgcOutFieldDots[:numDotsAreaA]
         # calculate new radius for dots appearing in region A
         dotsRadius[lgcAdots] = innerBorder*np.sqrt(
             (np.square(alphaExp)-1)*np.random.rand(sum(lgcAdots))+1)
-        lgcBdots = lgcOutFieldDots[int(numDeadDots*pAexp):]
+        # get logical for area B
+        lgcBdots = lgcOutFieldDots[numDotsAreaA:]
         # calculate new radius for dots appearing in region B
         dotsRadius[lgcBdots] = np.sqrt(
             (np.square(FieldSizeRadius) -
@@ -381,15 +390,18 @@ def dots_update(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
             np.square(alphaExp)*np.square(innerBorder)
             )
     elif dotSpeed < 0:
-        # create lgc for elems where radius too small
+        # create lgc for elems where radius too small (contraction)
         lgcOutFieldDots = (dotsRadius <= innerBorder)
-        # how many dots died because they fell out?
-        numDeadDots = np.sum(lgcOutFieldDots)
-        lgcAdots = lgcOutFieldDots[:int(numDeadDots*pAcontr)]
+        # how many dots should go in area A?
+        numDotsAreaA = np.sum(np.random.choice(np.arange(2),
+            p=[1-pAcontr, pAcontr], size=np.sum(lgcOutFieldDots)))
+        # get logical for area A
+        lgcAdots = lgcOutFieldDots[:numDotsAreaA]
         # calculate new radius for dots appearing in region A
         dotsRadius[lgcAdots] = Scontr*np.sqrt(
             (np.square(alphaContr)-1)*np.random.rand(sum(lgcAdots))+1)
-
+        # get logical for area B
+        lgcBdots = lgcOutFieldDots[numDotsAreaA:]
         # calculate new radius for dots appearing in region B
         dotsRadius[lgcBdots] = np.sqrt(
             (np.square(Scontr) -
