@@ -26,7 +26,7 @@ nDots = 600
 # specify speed in units per frame
 dotSpeed = 8  # deg per s [8]
 # dot Life, how long should a dot life
-dotLife = 10  # number of frames [10]
+dotLife = 5  # number of frames [10]
 # The size of the dots [diameter]
 dotSize = 0.2  # in deg
 # misc.deg2pix(0.2, myWin.monitor)
@@ -145,7 +145,7 @@ myWin = visual.Window(
 #targets = npzfile['targets']
 #logFile.write('Targets=' + unicode(targets) + '\n')
 
-conditions = np.array([-1, 0, 1, 2, 1, 2, 1, 2, 0, -1])
+conditions = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
 durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
@@ -186,6 +186,9 @@ logging.setDefaultClock(clock)
 # divide the dotSpeed by the refresh rate to see how many units (deg) the dot
 # travels per frame, not per second
 dotSpeed = dotSpeed / refr_rate
+
+# redefine dotlife
+dotLife = int(0.5*(FieldSizeRadius - innerBorder)/dotSpeed)
 
 # log stimulus properties defined above
 logFile.write('nDots=' + unicode(nDots) + '\n')
@@ -401,6 +404,9 @@ def dots_update_wrap(dotsX, dotsY, dotSpeed=dotSpeed):
 
     return dotsX, dotsY
 
+radiOnset = []
+radiOffset = []
+radiDensity = []
 
 # function that updates according to dot life time
 def dots_update_lifetime(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
@@ -427,11 +433,16 @@ def dots_update_lifetime(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
     lgcFrameDeath = (frameCount >= frameDeathAfter)
     # combine logicals from dots that died due to fell out and high age
     lgcDeath = np.logical_or(lgcOutFieldDots, lgcFrameDeath)
+    
+    radiOffset.append(dotsRadius[lgcDeath])
 
     # calculate new radius for dots that died
     dotsRadius[lgcDeath] = np.sqrt(
         (np.square(FieldSizeRadius) - np.square(innerBorder)) *
         np.random.rand(sum(lgcDeath)) + np.square(innerBorder))
+        
+    radiOnset.append(dotsRadius[lgcDeath])
+
     # calculate new angle for all dots that died (from age or falling)
     dotsTheta[lgcDeath] = np.random.uniform(0, 360, sum(lgcDeath))
 
@@ -440,6 +451,8 @@ def dots_update_lifetime(dotsX, dotsY, frameCount, dotSpeed=dotSpeed,
     # reset the counter for newborn dots that died from falling out
     frameCount[lgcOutFieldDots] = np.random.uniform(
         0, dotLife, size=sum(lgcOutFieldDots)).astype(int)
+
+    radiDensity.append(dotsRadius)
 
     # convert from polar to Cartesian
     dotsX, dotsY = pol2cart(dotsTheta, dotsRadius)
@@ -776,13 +789,21 @@ except:
 """FINISH"""
 core.quit()
 
-#numElem = [len(bla) for bla in radi]
-#numElem = np.array(numElem)
-#numElem = numElem[:200]
-#
-#items = [item for sublist in radi for item in sublist]
-#items = np.array(items)
-#np.diff(np.histogram(items)[0])
+numElem = [len(bla) for bla in radi]
+numElem = np.array(numElem)
+numElem = numElem[:200]
+
+onsets = [item for sublist in radiOnset for item in sublist]
+onsets = np.array(onsets)
+np.diff(np.histogram(onsets)[0])
+
+offsets = [item for sublist in radiOffset for item in sublist]
+offsets = np.array(offsets)
+np.diff(np.histogram(offsets)[0])
+
+density = [item for sublist in radiDensity for item in sublist]
+density = np.array(density)
+np.diff(np.histogram(density)[0])
 
 
 
