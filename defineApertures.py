@@ -94,7 +94,7 @@ maxRadi = minRadi + barSize
 radiPairs = zip(minRadi, maxRadi)
 
 # derive the angles for the wedge limits
-minTheta = np.linspace(0, 360, 4, endpoint=False)
+minTheta = np.linspace(0, 360, 8, endpoint=False)
 maxTheta = minTheta + 180
 thetaPairs = zip(minTheta, maxTheta)
 
