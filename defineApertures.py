@@ -12,21 +12,60 @@ import numpy as np
 def cart2pol(x, y):
     r = np.sqrt(x**2+y**2)
     t = np.arctan2(y,x)
-    t = np.rad2deg(t)
     return t, r
 
 def pol2cart(r, t):
-    t = np.deg2rad(t)
     x = r * np.cos(t)
     y = r * np.sin(t)
     return(x, y)
 
-def createBinCircleMask(size, rMin=0, rMax=500, thetaMin=-180, thetaMax=180):
+def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
+                        thetaMax=360.):
+
+    """Create binary wedge-and-ring mask.
+    Parameters
+    ----------
+    size : float
+        Size of the (background) square in deg of vis angle
+    numPixel : float
+        Number of pixels that should be used for the square
+    rMin : float
+        Minimum radius of the ring apertures in deg of vis angle
+    rMax : float
+        Maximum radius of the ring apertures in deg of vis angle
+    thetaMin : float
+        Minimum angle of the wedge apertures in deg
+    thetaMax : bool
+        Minimum angle of the wedge apertures in deg
+    Returns
+    -------
+    binMask : bool
+        binary wedge-and-ring mask
+    """    
+
+    # verify that the maximum radius is not bigger than the size 
+    if np.greater(rMax, size/2.):
+        rMax = np.copy(size/2.)
+        print "rMax was reset to max stim size."
+    
+    # convert from deg to radius
+    thetaMin, thetaMax = np.deg2rad((thetaMin, thetaMax))
+
+    # ensure stop angle > start angle
+    if thetaMax < thetaMin:
+        thetaMax += (2*np.i)
+
     # create meshgrid
-    x, y = np.meshgrid(np.arange(-size/2., size/2.)+0.5,
-                   np.arange(-size/2., size/2.)+0.5)
+    x, y = np.meshgrid(np.linspace(-size/2., size/2., numPixel),
+                       np.linspace(-size/2., size/2., numPixel))
+
     # convert to polar coordinates
     theta, radius = cart2pol(x, y)
+    theta -= thetaMin
+    
+    # normalize angles so they do not exceed 360 degrees
+    theta %= (2*np.pi)
+
     # define ringMask
     ringMask = np.logical_and(np.greater(radius, rMin),
                               np.less_equal(radius, rMax))
@@ -35,11 +74,18 @@ def createBinCircleMask(size, rMin=0, rMax=500, thetaMin=-180, thetaMax=180):
     wedgeMask = np.logical_and(np.greater(theta, thetaMin),
                                np.less_equal(theta, thetaMax))
     
-    
+
+    wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
+
+    # return binary mask
     return np.logical_and(ringMask, wedgeMask)
 
 
     
-test = createBinCircleMask(1200, rMin=0, rMax=600, thetaMin=-120, thetaMax=180)
-    
-    
+binMask = createBinCircleMask(10, 1200, rMin=2, rMax=4, thetaMin=270,
+                           thetaMax=450)
+
+
+
+
+
