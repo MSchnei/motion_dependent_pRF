@@ -7,7 +7,7 @@ Created on Sun Oct 22 15:53:56 2017
 """
 
 import numpy as np
-
+import itertools
 
 def cart2pol(x, y):
     r = np.sqrt(x**2+y**2)
@@ -71,8 +71,8 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
                               np.less_equal(radius, rMax))
     
     # define wedgeMask
-    wedgeMask = np.logical_and(np.greater(theta, thetaMin),
-                               np.less_equal(theta, thetaMax))
+#    wedgeMask = np.logical_and(np.greater(theta, thetaMin),
+#                               np.less_equal(theta, thetaMax))
     
 
     wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
@@ -81,23 +81,31 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     return np.logical_and(ringMask, wedgeMask)
 
 
-    
-binMask = createBinCircleMask(10, 1200, rMin=2, rMax=4, thetaMin=270,
-                           thetaMax=450)
-
-
 # stimulus settings
 fovHeight = 10.
+pix = 1200
 steps = 20.
 barSize = 2.
 stepSize = fovHeight/steps
 
+# derive the radii for the ring limits
 minRadi = np.linspace(0, fovHeight/2.-stepSize, steps/2.)
 maxRadi = minRadi + barSize
-radiPairs = np.array(zip(minRadi, maxRadi))
+radiPairs = zip(minRadi, maxRadi)
 
+# derive the angles for the wedge limits
 minTheta = np.linspace(0, 360, 4, endpoint=False)
 maxTheta = minTheta + 180
-thetaPairs = np.array(zip(minTheta, maxTheta))
+thetaPairs = zip(minTheta, maxTheta)
 
+# find all possible combinations between ring and wedge limits
+combis = list(itertools.product(radiPairs, thetaPairs))
+
+# create binary masks
+binMasks = np.empty((pix, pix, len(combis)), dtype='bool')
+for ind, combi in enumerate(combis):
+    binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0][0],
+                                             rMax=combi[0][1],
+                                             thetaMin=combi[1][0],
+                                             thetaMax=combi[1][1])
 
