@@ -86,6 +86,18 @@ binMask = createBinCircleMask(10, 1200, rMin=2, rMax=4, thetaMin=270,
                            thetaMax=450)
 
 
+# stimulus settings
+fovHeight = 10.
+steps = 20.
+barSize = 2.
+stepSize = fovHeight/steps
 
+minRadi = np.linspace(0, fovHeight/2.-stepSize, steps/2.)
+maxRadi = minRadi + barSize
+radiPairs = np.array(zip(minRadi, maxRadi))
+
+minTheta = np.linspace(0, 360, 4, endpoint=False)
+maxTheta = minTheta + 180
+thetaPairs = np.array(zip(minTheta, maxTheta))
 
 
