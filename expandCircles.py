@@ -18,7 +18,7 @@ PixH = 1200.0  # [1200.0] in scanner
 
 
 # %%
-conditions = np.array([0, 1, 3, 0, 1, 3, 0, 1, 3, 0])
+conditions = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 0])
 durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 # %%

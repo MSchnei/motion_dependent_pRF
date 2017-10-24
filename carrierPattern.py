@@ -58,7 +58,7 @@ X, Y = np.meshgrid(np.linspace(-PixH/2., PixH/2., dim, endpoint=False)+1,
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
-    ima = PrettyPattern(d, 2, t, PixH, dim)
+    ima = PrettyPattern(d, 1, t, PixH, dim)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
     ima[np.less_equal(ima, 0)] = -1
