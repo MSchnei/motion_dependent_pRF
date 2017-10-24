@@ -85,7 +85,7 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
 
 # stimulus settings
 fovHeight = 10.
-pix = 1200
+pix = 512
 steps = 20.
 barSize = 1.5
 stepSize = fovHeight/steps
@@ -111,9 +111,13 @@ for ind, combi in enumerate(combis):
                                              thetaMin=combi[1][0],
                                              thetaMax=combi[1][1])
 
+binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
+                           binMasks), axis=2)
+np.save("/home/marian/Documents/Testing/CircleBarApertures/Masks", binMasks)
 # save array as images, if wanted
 from PIL import Image
 for ind in np.arange(binMasks.shape[2]):
     im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
     im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
             str(ind) + ".png")
+    
