@@ -9,15 +9,18 @@ Created on Sun Oct 22 15:53:56 2017
 import numpy as np
 import itertools
 
+
 def cart2pol(x, y):
     r = np.sqrt(x**2+y**2)
-    t = np.arctan2(y,x)
+    t = np.arctan2(y, x)
     return t, r
+
 
 def pol2cart(r, t):
     x = r * np.cos(t)
     y = r * np.sin(t)
     return(x, y)
+
 
 def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
                         thetaMax=360.):
@@ -41,13 +44,13 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     -------
     binMask : bool
         binary wedge-and-ring mask
-    """    
+    """
 
-    # verify that the maximum radius is not bigger than the size 
+    # verify that the maximum radius is not bigger than the size
     if np.greater(rMax, size/2.):
         rMax = np.copy(size/2.)
         print "rMax was reset to max stim size."
-    
+
     # convert from deg to radius
     thetaMin, thetaMax = np.deg2rad((thetaMin, thetaMax))
 
@@ -62,18 +65,17 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     # convert to polar coordinates
     theta, radius = cart2pol(x, y)
     theta -= thetaMin
-    
+
     # normalize angles so they do not exceed 360 degrees
     theta %= (2*np.pi)
 
     # define ringMask
     ringMask = np.logical_and(np.greater(radius, rMin),
                               np.less_equal(radius, rMax))
-    
+
     # define wedgeMask
 #    wedgeMask = np.logical_and(np.greater(theta, thetaMin),
 #                               np.less_equal(theta, thetaMax))
-    
 
     wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
 
@@ -85,7 +87,7 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
 fovHeight = 10.
 pix = 1200
 steps = 20.
-barSize = 2.
+barSize = 1.5
 stepSize = fovHeight/steps
 
 # derive the radii for the ring limits
@@ -109,3 +111,9 @@ for ind, combi in enumerate(combis):
                                              thetaMin=combi[1][0],
                                              thetaMax=combi[1][1])
 
+# save array as images, if wanted
+from PIL import Image
+for ind in np.arange(binMasks.shape[2]):
+    im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
+            str(ind) + ".png")

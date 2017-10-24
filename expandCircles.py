@@ -18,7 +18,7 @@ PixH = 1200.0  # [1200.0] in scanner
 
 
 # %%
-conditions = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 0])
+conditions = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 2])
 durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 # %%
@@ -44,8 +44,8 @@ myWin = visual.Window(
     units='pix',
     blendMode='avg')
 
-circle00 = visual.Circle(myWin, radius=0.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
+circle = visual.Circle(myWin, radius=0.0, edges=100, units='deg', lineWidth=0,
+                       fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
 
 # %%
 """TIME, TIMING AND CLOCKS"""
@@ -55,17 +55,26 @@ totalTime = np.sum(durations)
 # define clock
 clock = core.Clock()
 
-# %%
 """FUNCTIONS"""
 # update flicker in a square wave fashion
 # with every frame
 from itertools import cycle
-numFrame = 10
-squareArray = np.sin(np.linspace(0, np.pi/2., numFrame))
-squareCycle = cycle(squareArray)
+from scipy import signal
+
+
+nFrames = 60
+raisedCos = signal.hann(nFrames/2.)[:nFrames/4.]
+
+tempArray = np.zeros(nFrames)
+tempArray[nFrames/4.:-nFrames/4.] = 1
+tempArray[:nFrames/4.] = raisedCos
+tempArray[-nFrames/4.:] = raisedCos[::-1]
+
+tempCycle = cycle(tempArray)
+
 
 def squFlicker():
-    mContrast = squareCycle.next()
+    mContrast = tempCycle.next()
     return mContrast
 
 
@@ -103,42 +112,44 @@ while clock.getTime() < totalTime:
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
+        circle.contrast = squFlicker()
+
         for t, ind in enumerate(sequence):
             print ind
 
-            circle00.radius = 5
-            circle00.fillColor = fill1
-            circle00.draw()
-            circle00.radius = 4.5 + ind
-            circle00.fillColor = fill2
-            circle00.draw()
-            circle00.radius = 4.0 + ind
-            circle00.fillColor = fill1
-            circle00.draw()
-            circle00.radius = 3.5 + ind
-            circle00.fillColor = fill2
-            circle00.draw()
-            circle00.radius = 3.0 + ind
-            circle00.fillColor = fill1
-            circle00.draw()
-            circle00.radius = 2.5 + ind
-            circle00.fillColor = fill2
-            circle00.draw()
-            circle00.radius = 2.0 + ind
-            circle00.fillColor = fill1
-            circle00.draw()
-            circle00.radius = 1.5 + ind
-            circle00.fillColor = fill2
-            circle00.draw()
-            circle00.radius = 1.0 + ind
-            circle00.fillColor = fill1
-            circle00.draw()
-            circle00.radius = 0.5 + ind
-            circle00.fillColor = fill2
-            circle00.draw()
-            circle00.radius = 0.0 + ind
-            circle00.fillColor = fill1
-            circle00.draw()
+            circle.radius = 5
+            circle.fillColor = fill1
+            circle.draw()
+            circle.radius = 4.5 + ind
+            circle.fillColor = fill2
+            circle.draw()
+            circle.radius = 4.0 + ind
+            circle.fillColor = fill1
+            circle.draw()
+            circle.radius = 3.5 + ind
+            circle.fillColor = fill2
+            circle.draw()
+            circle.radius = 3.0 + ind
+            circle.fillColor = fill1
+            circle.draw()
+            circle.radius = 2.5 + ind
+            circle.fillColor = fill2
+            circle.draw()
+            circle.radius = 2.0 + ind
+            circle.fillColor = fill1
+            circle.draw()
+            circle.radius = 1.5 + ind
+            circle.fillColor = fill2
+            circle.draw()
+            circle.radius = 1.0 + ind
+            circle.fillColor = fill1
+            circle.draw()
+            circle.radius = 0.5 + ind
+            circle.fillColor = fill2
+            circle.draw()
+            circle.radius = 0.0 + ind
+            circle.fillColor = fill1
+            circle.draw()
 
             myWin.flip()
 
