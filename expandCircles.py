@@ -46,26 +46,6 @@ myWin = visual.Window(
 
 circle00 = visual.Circle(myWin, radius=0.0, edges=64, units='deg', lineWidth=0,
                          fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
-circle01 = visual.Circle(myWin, radius=0.5, edges=64, units='deg', lineWidth=0,
-                         fillColor=(1.0, 1.0, 1.0), fillColorSpace='rgb')
-circle02 = visual.Circle(myWin, radius=1.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
-circle03 = visual.Circle(myWin, radius=1.5, edges=64, units='deg', lineWidth=0,
-                         fillColor=(1.0, 1.0, 1.0), fillColorSpace='rgb')
-circle04 = visual.Circle(myWin, radius=2.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
-circle05 = visual.Circle(myWin, radius=2.5, edges=64, units='deg', lineWidth=0,
-                         fillColor=(1.0, 1.0, 1.0), fillColorSpace='rgb')
-circle06 = visual.Circle(myWin, radius=3.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
-circle07 = visual.Circle(myWin, radius=3.5, edges=64, units='deg', lineWidth=0,
-                         fillColor=(1.0, 1.0, 1.0), fillColorSpace='rgb')
-circle08 = visual.Circle(myWin, radius=4.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
-circle09 = visual.Circle(myWin, radius=4.5, edges=64, units='deg', lineWidth=0,
-                         fillColor=(1.0, 1.0, 1.0), fillColorSpace='rgb')
-circle10 = visual.Circle(myWin, radius=5.0, edges=64, units='deg', lineWidth=0,
-                         fillColor=(-1.0, -1.0, -1.0), fillColorSpace='rgb')
 
 # %%
 """TIME, TIMING AND CLOCKS"""
@@ -76,18 +56,37 @@ totalTime = np.sum(durations)
 clock = core.Clock()
 
 # %%
+"""FUNCTIONS"""
+# update flicker in a square wave fashion
+# with every frame
+from itertools import cycle
+numFrame = 10
+squareArray = np.sin(np.linspace(0, np.pi/2., numFrame))
+squareCycle = cycle(squareArray)
+
+def squFlicker():
+    mContrast = squareCycle.next()
+    return mContrast
+
+
+# %%
 """RENDER_LOOP"""
 # Create Counters
 i = 0  # counter for blocks
 
 sequenceExp = np.linspace(0, 0.5, 10, endpoint=False)
-sequenceCon = np.copy(sequenceExp[::-1])
-sequenceControl1 = np.copy(sequenceExp)
-np.random.shuffle(sequenceControl1)
-sequenceControl2 = np.copy(sequenceExp)
-sequenceControl2[:] = 0
+#test = np.sin(np.linspace(0, np.pi, 10))
+#test = (test / np.sum(test)) * 0.5
+#sequenceExp = np.cumsum(test)
 
-switch = True
+sequenceCon = np.copy(sequenceExp[::-1])
+
+sequenceControl = np.copy(sequenceExp)
+sequenceControl[:] = 0
+
+fill1 = [-1.0, -1.0, -1.0]
+fill2 = [1.0, 1.0, 1.0]
+
 while clock.getTime() < totalTime:
 
     # expanding
@@ -100,55 +99,55 @@ while clock.getTime() < totalTime:
 
     # control1
     elif conditions[i] == 2:
-        sequence = np.copy(sequenceControl1)
-
-    # control2
-    elif conditions[i] == 3:
-        sequence = np.copy(sequenceControl2)
+        sequence = np.copy(sequenceControl)
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
         for t, ind in enumerate(sequence):
             print ind
 
+            circle00.radius = 5
+            circle00.fillColor = fill1
+            circle00.draw()
+            circle00.radius = 4.5 + ind
+            circle00.fillColor = fill2
+            circle00.draw()
+            circle00.radius = 4.0 + ind
+            circle00.fillColor = fill1
+            circle00.draw()
+            circle00.radius = 3.5 + ind
+            circle00.fillColor = fill2
+            circle00.draw()
+            circle00.radius = 3.0 + ind
+            circle00.fillColor = fill1
+            circle00.draw()
+            circle00.radius = 2.5 + ind
+            circle00.fillColor = fill2
+            circle00.draw()
+            circle00.radius = 2.0 + ind
+            circle00.fillColor = fill1
+            circle00.draw()
+            circle00.radius = 1.5 + ind
+            circle00.fillColor = fill2
+            circle00.draw()
+            circle00.radius = 1.0 + ind
+            circle00.fillColor = fill1
+            circle00.draw()
+            circle00.radius = 0.5 + ind
+            circle00.fillColor = fill2
+            circle00.draw()
             circle00.radius = 0.0 + ind
-            circle01.radius = 0.5 + ind
-            circle02.radius = 1.0 + ind
-            circle03.radius = 1.5 + ind
-            circle04.radius = 2.0 + ind
-            circle05.radius = 2.5 + ind
-            circle06.radius = 3.0 + ind
-            circle07.radius = 3.5 + ind
-            circle08.radius = 4.0 + ind
-            circle09.radius = 4.5 + ind
-
-            circle10.draw()
-            circle09.draw()
-            circle08.draw()
-            circle07.draw()
-            circle06.draw()
-            circle05.draw()
-            circle04.draw()
-            circle03.draw()
-            circle02.draw()
-            circle01.draw()
+            circle00.fillColor = fill1
             circle00.draw()
 
             myWin.flip()
 
             if t == len(sequence)-1:
                 print "Change contrast"
-                circle10.fillColor *= -1
-                circle09.fillColor *= -1
-                circle08.fillColor *= -1
-                circle07.fillColor *= -1
-                circle06.fillColor *= -1
-                circle05.fillColor *= -1
-                circle04.fillColor *= -1
-                circle03.fillColor *= -1
-                circle02.fillColor *= -1
-                circle01.fillColor *= -1
-                circle00.fillColor *= -1
+                fill1 = np.array(fill1)*-1
+                fill1 = list(fill1)
+                fill2 = np.array(fill2)*-1
+                fill2 = list(fill2)
 
             # handle key presses each frame
             for key in event.getKeys():
