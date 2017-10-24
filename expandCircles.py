@@ -18,7 +18,7 @@ PixH = 1200.0  # [1200.0] in scanner
 
 
 # %%
-conditions = np.array([1, 2, 0, 1, 2, 0, 1, 2, 0, 1])
+conditions = np.array([0, 1, 3, 0, 1, 3, 0, 1, 3, 0])
 durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
 # %%
@@ -82,9 +82,10 @@ i = 0  # counter for blocks
 
 sequenceExp = np.linspace(0, 0.5, 10, endpoint=False)
 sequenceCon = np.copy(sequenceExp[::-1])
-sequenceControl = np.copy(sequenceExp)
-np.random.shuffle(sequenceControl)
-
+sequenceControl1 = np.copy(sequenceExp)
+np.random.shuffle(sequenceControl1)
+sequenceControl2 = np.copy(sequenceExp)
+sequenceControl2[:] = 0
 
 switch = True
 while clock.getTime() < totalTime:
@@ -97,13 +98,17 @@ while clock.getTime() < totalTime:
     elif conditions[i] == 1:
         sequence = np.copy(sequenceCon)
 
-    # control
+    # control1
     elif conditions[i] == 2:
-        sequence = np.copy(sequenceControl)
+        sequence = np.copy(sequenceControl1)
+
+    # control2
+    elif conditions[i] == 3:
+        sequence = np.copy(sequenceControl2)
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
-        for ind in sequence:
+        for t, ind in enumerate(sequence):
             print ind
 
             circle00.radius = 0.0 + ind
@@ -131,7 +136,7 @@ while clock.getTime() < totalTime:
 
             myWin.flip()
 
-            if np.isclose(ind, sequence[-1]):
+            if t == len(sequence)-1:
                 print "Change contrast"
                 circle10.fillColor *= -1
                 circle09.fillColor *= -1

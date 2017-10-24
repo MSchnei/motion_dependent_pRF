@@ -26,7 +26,7 @@ nDots = 600
 # specify speed in units per frame
 dotSpeed = 8  # deg per s [8]
 # dot Life, how long should a dot life
-dotLife = 5  # number of frames [10]
+dotLife = 3  # number of frames [10]
 # The size of the dots [diameter]
 dotSize = 0.2  # in deg
 # misc.deg2pix(0.2, myWin.monitor)
@@ -145,7 +145,7 @@ myWin = visual.Window(
 #targets = npzfile['targets']
 #logFile.write('Targets=' + unicode(targets) + '\n')
 
-conditions = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+conditions = np.array([-1, 1, 2, 0, 1, 2, 0, 1, 1, 1])
 
 durations = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
 
@@ -188,7 +188,7 @@ logging.setDefaultClock(clock)
 dotSpeed = dotSpeed / refr_rate
 
 # redefine dotlife
-dotLife = int(0.5*(FieldSizeRadius - innerBorder)/dotSpeed)
+#dotLife = int(0.5*(FieldSizeRadius - innerBorder)/dotSpeed)
 
 # log stimulus properties defined above
 logFile.write('nDots=' + unicode(nDots) + '\n')
