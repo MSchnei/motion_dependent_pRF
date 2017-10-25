@@ -109,7 +109,7 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 """DURATIONS"""
 # get timings for apertures and motion directions
 Conditions = np.array([[0, 11, 22, 33, 44, 12, 34, 0],
-                       [0, 1, 2, 3, 1, 2, 3, 0]]).T
+                       [2, 2, 2, 2, 2, 2, 2, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
@@ -172,10 +172,6 @@ tempArray[-nFrames/2.:] = raisedCos[::-1]
 tempCycle = cycle(tempArray)
 
 
-def squFlicker():
-    mContrast = tempCycle.next()
-    return mContrast
-
 
 # %%
 """STIMULI"""
@@ -183,7 +179,7 @@ def squFlicker():
 movRTP = visual.GratingStim(
     myWin,
     tex=noiseTexture[..., 0],
-    mask=binMasks[..., 0],
+    mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
     sf=None,
@@ -275,7 +271,7 @@ refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
 if refr_rate is not None:
     frameDur = 1.0/round(refr_rate)
 else:
-    frameDur = 1.0/60.0  # couldn't get a reliable measure so guess
+    frameDur = 1.0/nFrames  # couldn't get a reliable measure so guess
 logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
@@ -312,17 +308,18 @@ while clock.getTime() < totalTime:
 
     # static dots rest
     if Conditions[i, 1] == 0:
-        tempIt = cycle(np.arange(60))
+        tempIt = cycle(np.arange(nFrames))
 
     # central motion
     elif Conditions[i, 1] == 1:
         # set loopDotSpeed to dotSpeed
-        tempIt = cycle(np.arange(60)[::-1])
+        tempIt = cycle(np.arange(nFrames)[::-1])
 
     # left motion
     elif Conditions[i, 1] == 2:
         # set loopDotSpeed to dotSpeed
-        tempIt = cycle(np.hstack([np.ones(30)*14, np.ones(30)*44]))
+        tempIt = cycle(np.hstack([np.ones(nFrames/2.)*14,
+                                  np.ones(nFrames/2.)*14]))
 
     # get key for mask
     keyMask = Conditions[i, 0]
@@ -351,10 +348,10 @@ while clock.getTime() < totalTime:
         Line.draw()
 
         movRTP.tex = noiseTexture[..., tempIt.next()]
-        movRTP.contrast = squFlicker()
+        movRTP.contrast = tempCycle.next()
         movRTP.draw()
         # set mask
-        movRTP.mask = tmask
+#        movRTP.mask = tmask
         # draw stimulus
         movRTP.draw()
 
