@@ -336,12 +336,12 @@ while clock.getTime() < totalTime:
 
     # expanding motion
     if keyMotDir == 0:
-        tempIt = cycle(np.arange(nFrames))
+        tempIt = cycle(np.tile(np.arange(nFrames),2))
 
     # contracting motion
     elif keyMotDir == 1:
         # set loopDotSpeed to dotSpeed
-        tempIt = cycle(np.arange(nFrames)[::-1])
+        tempIt = cycle(np.tile(np.arange(nFrames), 2)[::-1])
 
     # static/flicker control
     elif keyMotDir == 2:
@@ -353,8 +353,8 @@ while clock.getTime() < totalTime:
 #        controlArray[np.greater(controlArray, 0.)] = 1
 #        tempIt = cycle(controlArray)
 
-        tempIt = cycle(np.hstack([np.ones(nFrames/2.)*14,
-                                  np.ones(nFrames/2.)*14]))
+        tempIt = cycle(np.hstack([np.ones(nFrames)*14,
+                                  np.ones(nFrames)*14]))
 
     # get key for mask
     keyMask = Conditions[i, 0]
