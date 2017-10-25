@@ -8,6 +8,7 @@ Created on Tue Oct 24 16:46:04 2017
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import numpy as np
 import os
+from itertools import cycle
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 
 
@@ -109,7 +110,7 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 """DURATIONS"""
 # get timings for apertures and motion directions
 Conditions = np.array([[0, 11, 22, 33, 44, 12, 34, 0],
-                       [2, 2, 2, 2, 2, 2, 2, 2]]).T
+                       [2, 0, 1, 2, 2, 2, 2, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
@@ -159,10 +160,37 @@ binMasks[binMasks == 0] = -1
 """FUNCTIONS"""
 # update flicker in a square wave fashion
 # with every frame
-from itertools import cycle
-from scipy import signal
 
-raisedCos = signal.hann(nFrames)[:nFrames/2.]
+
+def raisedCos(steps, T=0.5, beta=0.5):
+    """"Create binary wedge-and-ring mask.
+    Parameters
+    ----------
+    steps : float
+        Number of points in the output window
+    T: float
+        The symbol-period
+    beta : float
+        Roll-off factor
+    Returns
+    -------
+    hf : 1d np.array
+        Raised-cosine filter in frequency space
+    """
+
+    frequencies = np.linspace(-1/T, 1/T, steps)
+    hf = np.empty(len(frequencies))
+    for ind, f in enumerate(frequencies):
+        if np.less_equal(np.abs(f), (1-beta)/(2*T)):
+            hf[ind] = 1
+        elif np.logical_and(np.less_equal(np.abs(f), (1+beta)/(2*T)),
+                            np.greater(np.abs(f), (1-beta)/(2*T))):
+            hf[ind] = 0.5*(1+np.cos((np.pi*T/2)*(np.abs(f)-(1-beta)/2*T)))
+        else:
+            hf[ind] = 0
+    return hf
+
+raisedCos = raisedCos(60, T=1, beta=0.3)[:nFrames/2.]
 
 tempArray = np.zeros(nFrames*2)
 tempArray[nFrames/2.:-nFrames/2.] = 1
@@ -188,7 +216,7 @@ movRTP = visual.GratingStim(
     color=(1.0, 1.0, 1.0),
     colorSpace='rgb',
     contrast=1.0,
-    opacity=1.0,
+    opacity=0.0,
     depth=0,
     rgbPedestal=(0.0, 0.0, 0.0),
     interpolate=False,
@@ -306,18 +334,25 @@ while clock.getTime() < totalTime:
     # get key for motion direction (expanding/ dilation/static)
     keyMotDir = Conditions[i, 1]
 
-    # static dots rest
-    if Conditions[i, 1] == 0:
+    # expanding motion
+    if keyMotDir == 0:
         tempIt = cycle(np.arange(nFrames))
 
-    # central motion
-    elif Conditions[i, 1] == 1:
+    # contracting motion
+    elif keyMotDir == 1:
         # set loopDotSpeed to dotSpeed
         tempIt = cycle(np.arange(nFrames)[::-1])
 
-    # left motion
-    elif Conditions[i, 1] == 2:
+    # static/flicker control
+    elif keyMotDir == 2:
         # set loopDotSpeed to dotSpeed
+        # define cycle for control condition
+#        controlArray = np.sin(phase)
+#        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
+#        controlArray[np.less_equal(controlArray, 0.)] = 0
+#        controlArray[np.greater(controlArray, 0.)] = 1
+#        tempIt = cycle(controlArray)
+
         tempIt = cycle(np.hstack([np.ones(nFrames/2.)*14,
                                   np.ones(nFrames/2.)*14]))
 
@@ -347,11 +382,14 @@ while clock.getTime() < totalTime:
         Line.setOri(135)
         Line.draw()
 
+        # set texture
         movRTP.tex = noiseTexture[..., tempIt.next()]
-        movRTP.contrast = tempCycle.next()
-        movRTP.draw()
+#        movRTP.tex = noiseTexture[..., 0] * tempIt.next()
+
+        # set opacity such that it follows a raised cosine fashion
+        movRTP.opacity = tempCycle.next()
         # set mask
-#        movRTP.mask = tmask
+        movRTP.mask = tmask
         # draw stimulus
         movRTP.draw()
 
