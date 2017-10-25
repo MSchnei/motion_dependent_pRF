@@ -31,7 +31,6 @@ def raisedCos(steps, T=0.5, beta=0.5):
     """
 
     frequencies = np.linspace(-1/T, 1/T, steps)
-    
     hf = np.empty(len(frequencies))
     for ind, f in enumerate(frequencies):
         if np.less_equal(np.abs(f), (1-beta)/(2*T)):
@@ -39,7 +38,6 @@ def raisedCos(steps, T=0.5, beta=0.5):
         elif np.logical_and(np.less_equal(np.abs(f), (1+beta)/(2*T)),
                             np.greater(np.abs(f), (1-beta)/(2*T))):
             hf[ind] = 0.5*(1+np.cos((np.pi*T/2)*(np.abs(f)-(1-beta)/2*T)))
-        
         else:
             hf[ind] = 0
     return hf
