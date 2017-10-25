@@ -6,8 +6,9 @@ Created on Sun Oct 22 15:53:56 2017
 @author: Marian
 """
 
-import numpy as np
 import itertools
+import numpy as np
+from scipy import spatial
 
 
 def cart2pol(x, y):
@@ -73,14 +74,63 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     ringMask = np.logical_and(np.greater(radius, rMin),
                               np.less_equal(radius, rMax))
 
-    # define wedgeMask
-#    wedgeMask = np.logical_and(np.greater(theta, thetaMin),
-#                               np.less_equal(theta, thetaMax))
-
     wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
 
     # return binary mask
     return np.logical_and(ringMask, wedgeMask)
+
+
+def raisedCos(steps, T=0.5, beta=0.5):
+    """"Create binary wedge-and-ring mask.
+    Parameters
+    ----------
+    steps : float
+        Number of points in the output window
+    T: float
+        The symbol-period
+    beta : float
+        Roll-off factor
+    Returns
+    -------
+    hf : 1d np.array
+        Raised-cosine filter in frequency space
+    """
+
+    frequencies = np.linspace(-1/T, 1/T, steps)
+    hf = np.empty(len(frequencies))
+    for ind, f in enumerate(frequencies):
+        if np.less_equal(np.abs(f), (1-beta)/(2*T)):
+            hf[ind] = 1
+        elif np.logical_and(np.less_equal(np.abs(f), (1+beta)/(2*T)),
+                            np.greater(np.abs(f), (1-beta)/(2*T))):
+            hf[ind] = 0.5*(1+np.cos((np.pi*T/2)*(np.abs(f)-(1-beta)/2*T)))
+        else:
+            hf[ind] = 0
+    return hf
+
+
+def getDistIma(inputIma, fovHeight=10, pix=512):
+    # create meshgrid
+    x, y = np.meshgrid(np.linspace(-fovHeight/2., fovHeight/2., pix),
+                       np.linspace(-fovHeight/2., fovHeight/2., pix))
+    # identify border voxels
+    grad = np.gradient(test)
+    gramag = np.greater(np.sqrt(np.power(grad[0], 2) + np.power(grad[1], 2)),
+                        0)
+    border = np.logical_and(gramag, test)
+    # get (degree) coordinates for points on the border
+    borderpoints = np.vstack((x[border], y[border])).T
+    # get (degree) coordinates for all points in the image
+    allpoints = np.vstack((x.flatten(), y.flatten())).T
+    # get distace of all points in the image to every border voxel
+    distance = spatial.distance.cdist(allpoints, borderpoints,
+                                      metric='euclidean')
+    # get the distance to the border point that is closest
+    distMin = np.min(distance, axis=1)
+    # put minimum distances in images shape.
+    distIma = distMin.reshape((pix, pix))
+
+    return distIma
 
 
 # stimulus settings
@@ -120,4 +170,28 @@ for ind in np.arange(binMasks.shape[2]):
     im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
     im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
             str(ind) + ".png")
-    
+
+# get a single mask
+test = binMasks[..., 20]
+# get its distance image
+distIma = getDistIma(test, fovHeight, pix)
+
+
+# find logical for pixels away less than a certain number from border
+lgcIma = np.logical_and(np.less_equal(distIma, 0.5), test)
+# get distances for values that fullfill logical
+distance = distIma[lgcIma]
+# scale distances to fit in the window
+distance *= 100
+# get raised cosine
+window = raisedCos(100, T=1, beta=0.9)[:50]
+window = window[::-1]
+# get new values
+newvals = np.copy(window[distance.astype('int')])
+# take the origanal mask, the logical and assign new values
+test = test.astype('float')
+test[lgcIma] = np.copy(newvals)
+
+
+
+
