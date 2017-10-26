@@ -114,10 +114,10 @@ def getDistIma(inputIma, fovHeight=10, pix=512):
     x, y = np.meshgrid(np.linspace(-fovHeight/2., fovHeight/2., pix),
                        np.linspace(-fovHeight/2., fovHeight/2., pix))
     # identify border voxels
-    grad = np.gradient(test)
+    grad = np.gradient(inputIma)
     gramag = np.greater(np.sqrt(np.power(grad[0], 2) + np.power(grad[1], 2)),
                         0)
-    border = np.logical_and(gramag, test)
+    border = np.logical_and(gramag, inputIma)
     # get (degree) coordinates for points on the border
     borderpoints = np.vstack((x[border], y[border])).T
     # get (degree) coordinates for all points in the image
@@ -131,6 +131,28 @@ def getDistIma(inputIma, fovHeight=10, pix=512):
     distIma = distMin.reshape((pix, pix))
 
     return distIma
+
+
+def assignBorderVals(binMask, distIma, borderRange=0.5):
+    "Assign the new (raised cosine values) to voxels in desired border range."
+
+    # find logical for pixels away less than a certain number from border
+    lgcIma = np.logical_and(np.less_equal(distIma, borderRange), binMask)
+    # get distances for values that fullfill logical
+    distance = distIma[lgcIma]
+    # distance will contain values from 0 to border range
+    scaleFactor = 50 / borderRange
+    # scale distances to fit in the window
+    distance *= scaleFactor
+    # get raised cosine window
+    window = raisedCos(100, T=1, beta=0.9)[:50]
+    # get new values
+    newvals = np.copy(window[distance.astype('int')])
+    # take the origanal mask, the logical and insert new values
+    binMask = binMask.astype('float')
+    binMask[lgcIma] = np.copy(newvals)
+
+    return binMask
 
 
 # stimulus settings
@@ -171,27 +193,37 @@ for ind in np.arange(binMasks.shape[2]):
     im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
             str(ind) + ".png")
 
-# get a single mask
-test = binMasks[..., 20]
-# get its distance image
-distIma = getDistIma(test, fovHeight, pix)
+# create masks with raised cosines
+binMasksRamped = np.empty((pix, pix, len(combis)), dtype='bool')
+
+for i in range(binMasks.shape[-1]):
+    # get a single mask
+    binMask = binMasks[..., i]
+    # check whether there is at least 1 non zero element
+    if np.greater(np.sum(binMask), 0):
+        # get its distance image
+        distIma = getDistIma(binMask, fovHeight, pix)
+        # assign raised cosine values to bixels less than 0.5 away from border
+        binMasksRamped[..., i] = assignBorderVals(binMask, distIma,
+                                                  borderRange=0.5)
+    else:
+        # assign old mask
+        binMasksRamped[..., i] = binMask
 
 
-# find logical for pixels away less than a certain number from border
-lgcIma = np.logical_and(np.less_equal(distIma, 0.5), test)
-# get distances for values that fullfill logical
-distance = distIma[lgcIma]
-# scale distances to fit in the window
-distance *= 100
-# get raised cosine
-window = raisedCos(100, T=1, beta=0.9)[:50]
-window = window[::-1]
-# get new values
-newvals = np.copy(window[distance.astype('int')])
-# take the origanal mask, the logical and assign new values
-test = test.astype('float')
-test[lgcIma] = np.copy(newvals)
+np.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/RampedMasks",
+        binMasksRamped)
+# save array as images, if wanted
+from PIL import Image
+for ind in np.arange(binMasks.shape[2]):
+    im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/Ima" +
+            "_" + str(ind) + ".png")
 
 
-
-
+## get a single mask
+#binMask = binMasks[..., 20]
+## get its distance image
+#distIma = getDistIma(binMask, fovHeight, pix)
+## assign new, raised cosine values to bixels less than 0.5 away from border
+#binMask = assignBorderVals(binMask, distIma, borderRange=0.5)
