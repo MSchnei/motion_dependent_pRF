@@ -10,7 +10,7 @@ import numpy as np
 import os
 from itertools import cycle
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
-
+from copy import copy
 
 # %%
 """ SAVING and LOGGING """
@@ -69,7 +69,7 @@ logging.console.setLevel(logging.WARNING)  # set console to receive warnings
 # set monitor information:
 distanceMon = 99  # [99 for Nova coil]
 widthMon = 30  # [30 for Nova coil]
-PixW = 1920.0  # [1920.0] in scanner
+PixW = 1200.0  # [1920.0] in scanner
 PixH = 1200.0  # [1200.0] in scanner
 
 moni = monitors.Monitor('testMonitor', width=widthMon, distance=distanceMon)
@@ -88,7 +88,7 @@ myWin = visual.Window(
     screen=0,
     winType='pyglet',  # winType : None, ‘pyglet’, ‘pygame’
     allowGUI=False,
-    allowStencil=True,
+    allowStencil=False,
     fullscr=False,  # for psychoph lab: fullscr = True
     monitor=moni,
     color=[0, 0, 0],
@@ -109,8 +109,8 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 # %%
 """DURATIONS"""
 # get timings for apertures and motion directions
-Conditions = np.array([[0, 11, 22, 33, 44, 12, 34, 0],
-                       [2, 0, 1, 2, 2, 2, 2, 2]]).T
+Conditions = np.array([[0, 11, 22, 33, 44, 12, 34, 58],
+                       [2, 2, 2, 2, 2, 2, 2, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
@@ -156,6 +156,7 @@ binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/Masks.npy"
 # where -1 means that values are not passed, 0 means values are half-passed
 binMasks[binMasks == 0] = -1
 
+
 # %%
 """FUNCTIONS"""
 # update flicker in a square wave fashion
@@ -190,16 +191,14 @@ def raisedCos(steps, T=0.5, beta=0.5):
             hf[ind] = 0
     return hf
 
-raisedCos = raisedCos(60, T=1, beta=0.3)[:nFrames/2.]
+raisedCosine = raisedCos(60, T=1, beta=0.3)[:nFrames/4.]
 
-tempArray = np.zeros(nFrames*2)
-tempArray[nFrames/2.:-nFrames/2.] = 1
-tempArray[:nFrames/2.] = raisedCos
-tempArray[-nFrames/2.:] = raisedCos[::-1]
+tempArray = np.zeros(nFrames)
+tempArray[nFrames/4.:-nFrames/4.] = 1
+tempArray[:nFrames/4.] = raisedCosine
+tempArray[-nFrames/4.:] = raisedCosine[::-1]
 
-tempCycle = cycle(tempArray)
-
-
+tempCycle = np.nditer(tempArray)
 
 # %%
 """STIMULI"""
@@ -300,13 +299,15 @@ if refr_rate is not None:
     frameDur = 1.0/round(refr_rate)
 else:
     frameDur = 1.0/nFrames  # couldn't get a reliable measure so guess
+print "refr_rate:"
+print refr_rate
 logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 
 # set durations
 nrOfVols = 8
-durations = np.arange(ExpectedTR, ExpectedTR*nrOfVols + ExpectedTR, ExpectedTR)
+durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
 # create clock and Landolt clock
@@ -331,72 +332,70 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
+    # reset iterator for opacity
+    tempCycle.reset()
+
     # get key for motion direction (expanding/ dilation/static)
     keyMotDir = Conditions[i, 1]
 
     # expanding motion
     if keyMotDir == 0:
-        tempIt = cycle(np.tile(np.arange(nFrames),2))
+        tempIt = np.nditer(np.tile(np.arange(nFrames), 2))
 
     # contracting motion
     elif keyMotDir == 1:
-        # set loopDotSpeed to dotSpeed
-        tempIt = cycle(np.tile(np.arange(nFrames), 2)[::-1])
+        tempIt = np.nditer(np.tile(np.arange(nFrames), 2)[::-1])
 
     # static/flicker control
     elif keyMotDir == 2:
-        # set loopDotSpeed to dotSpeed
         # define cycle for control condition
-#        controlArray = np.sin(phase)
-#        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
-#        controlArray[np.less_equal(controlArray, 0.)] = 0
-#        controlArray[np.greater(controlArray, 0.)] = 1
-#        tempIt = cycle(controlArray)
+        controlArray = np.sin(phase)
+        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
+        controlArray[np.less(controlArray, 0.)] = -1
+        controlArray[np.greater(controlArray, 0.)] = 1
+        tempIt = np.nditer(controlArray)
 
-        tempIt = cycle(np.hstack([np.ones(nFrames)*14,
-                                  np.ones(nFrames)*14]))
+#        tempIt = np.nditer(np.hstack([np.ones(nFrames)*14,
+#                                      np.ones(nFrames)*14]))
 
     # get key for mask
     keyMask = Conditions[i, 0]
     # get mask
     tmask = np.squeeze(binMasks[:, :, keyMask])
 
-    while clock.getTime() < durations[i]:
+    while clock.getTime() < np.sum(durations[0:i+1]):
         # draw fixation grid (circles and lines)
-        Circle.setSize((2, 2))
-        Circle.draw()
-        Circle.setSize((4, 4))
-        Circle.draw()
-        Circle.setSize((6, 6))
-        Circle.draw()
-        Circle.setSize((8, 8))
-        Circle.draw()
-        Circle.setSize((10, 10))
-        Circle.draw()
-        Line.setOri(0)
-        Line.draw()
-        Line.setOri(45)
-        Line.draw()
-        Line.setOri(90)
-        Line.draw()
-        Line.setOri(135)
-        Line.draw()
+#        Circle.setSize((2, 2))
+#        Circle.draw()
+#        Circle.setSize((4, 4))
+#        Circle.draw()
+#        Circle.setSize((6, 6))
+#        Circle.draw()
+#        Circle.setSize((8, 8))
+#        Circle.draw()
+#        Circle.setSize((10, 10))
+#        Circle.draw()
+#        Line.setOri(0)
+#        Line.draw()
+#        Line.setOri(45)
+#        Line.draw()
+#        Line.setOri(90)
+#        Line.draw()
+#        Line.setOri(135)
+#        Line.draw()
 
         # set texture
-        movRTP.tex = noiseTexture[..., tempIt.next()]
-#        movRTP.tex = noiseTexture[..., 0] * tempIt.next()
+#        movRTP.tex = noiseTexture[..., float(tempIt.next())]
+        movRTP.tex = noiseTexture[..., 0]
+#        movRTP.contrast = float(tempIt.next())
+        movRTP.opacity = 1
 
         # set opacity such that it follows a raised cosine fashion
-        movRTP.opacity = tempCycle.next()
+#        movRTP.opacity = float(tempCycle.next())
         # set mask
         movRTP.mask = tmask
         # draw stimulus
         movRTP.draw()
-
-        # draw fixation point surround
-        dotFixSurround.draw()
-        # draw fixation point
-        dotFix.draw()
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
@@ -416,8 +415,8 @@ while clock.getTime() < totalTime:
         # draw fixation point
         dotFix.draw()
 
-        message.setText(clock.getTime())
-        message.draw()
+#        message.setText(clock.getTime())
+#        message.draw()
 
         # draw frame
         myWin.flip()
