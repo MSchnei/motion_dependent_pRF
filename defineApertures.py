@@ -9,6 +9,7 @@ Created on Sun Oct 22 15:53:56 2017
 import itertools
 import numpy as np
 from scipy import spatial
+from PIL import Image
 
 
 def cart2pol(x, y):
@@ -155,7 +156,7 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
     return binMask
 
 
-# stimulus settings
+# %% stimulus settings
 fovHeight = 10.
 pix = 512
 steps = 20.
@@ -175,7 +176,7 @@ thetaPairs = zip(minTheta, maxTheta)
 # find all possible combinations between ring and wedge limits
 combis = list(itertools.product(radiPairs, thetaPairs))
 
-# create binary masks
+# %% create binary masks
 binMasks = np.empty((pix, pix, len(combis)), dtype='bool')
 for ind, combi in enumerate(combis):
     binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0][0],
@@ -187,14 +188,13 @@ binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
                            binMasks), axis=2)
 np.save("/home/marian/Documents/Testing/CircleBarApertures/Masks", binMasks)
 # save array as images, if wanted
-from PIL import Image
-for ind in np.arange(binMasks.shape[2]):
+for ind in np.arange(binMasks.shape[-1]):
     im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
     im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
             str(ind) + ".png")
 
-# create masks with raised cosines
-binMasksRamped = np.empty((pix, pix, binMasks.shape[-1]), dtype='bool')
+# %% create masks with raised cosines
+binMasksRamped = np.empty((pix, pix, binMasks.shape[-1]), dtype='float32')
 
 for i in range(binMasks.shape[-1]):
     # get a single mask
@@ -211,19 +211,12 @@ for i in range(binMasks.shape[-1]):
         binMasksRamped[..., i] = binMask
 
 
+# for psychopy we need numbers in range from -1 to 1 (instead of 0 to 1)
+binMasksRampedPsyPy = binMasksRamped*2 - 1
 np.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/RampedMasks",
-        binMasksRamped)
+        binMasksRampedPsyPy)
 # save array as images, if wanted
-from PIL import Image
-for ind in np.arange(binMasks.shape[2]):
-    im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
+for ind in np.arange(binMasksRamped.shape[-1]):
+    im = Image.fromarray((255*binMasksRamped[..., ind]).astype(np.uint8))
     im.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/Ima" +
             "_" + str(ind) + ".png")
-
-
-## get a single mask
-#binMask = binMasks[..., 20]
-## get its distance image
-#distIma = getDistIma(binMask, fovHeight, pix)
-## assign new, raised cosine values to bixels less than 0.5 away from border
-#binMask = assignBorderVals(binMask, distIma, borderRange=0.5)
