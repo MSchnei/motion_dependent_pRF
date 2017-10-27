@@ -8,7 +8,7 @@ Created on Sun Oct 22 15:53:56 2017
 
 import itertools
 import numpy as np
-from scipy import spatial
+from scipy import spatial, signal
 from PIL import Image
 
 
@@ -81,35 +81,6 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     return np.logical_and(ringMask, wedgeMask)
 
 
-def raisedCos(steps, T=0.5, beta=0.5):
-    """"Create binary wedge-and-ring mask.
-    Parameters
-    ----------
-    steps : float
-        Number of points in the output window
-    T: float
-        The symbol-period
-    beta : float
-        Roll-off factor
-    Returns
-    -------
-    hf : 1d np.array
-        Raised-cosine filter in frequency space
-    """
-
-    frequencies = np.linspace(-1/T, 1/T, steps)
-    hf = np.empty(len(frequencies))
-    for ind, f in enumerate(frequencies):
-        if np.less_equal(np.abs(f), (1-beta)/(2*T)):
-            hf[ind] = 1
-        elif np.logical_and(np.less_equal(np.abs(f), (1+beta)/(2*T)),
-                            np.greater(np.abs(f), (1-beta)/(2*T))):
-            hf[ind] = 0.5*(1+np.cos((np.pi*T/2)*(np.abs(f)-(1-beta)/2*T)))
-        else:
-            hf[ind] = 0
-    return hf
-
-
 def getDistIma(inputIma, fovHeight=10, pix=512):
     # create meshgrid
     x, y = np.meshgrid(np.linspace(-fovHeight/2., fovHeight/2., pix),
@@ -146,7 +117,7 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
     # scale distances to fit in the window
     distance *= scaleFactor
     # get raised cosine window
-    window = raisedCos(100, T=1, beta=0.9)[:50]
+    window = signal.hann(100)[:50]
     # get new values
     newvals = np.copy(window[distance.astype('int')])
     # take the origanal mask, the logical and insert new values
@@ -157,14 +128,13 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
 
 
 # %% stimulus settings
-fovHeight = 10.
+fovHeight = 11.
 pix = 512
-steps = 20.
 barSize = 1.5
-stepSize = fovHeight/steps
+stepSize = 0.5
 
 # derive the radii for the ring limits
-minRadi = np.linspace(0, fovHeight/2.-stepSize, steps/2.)
+minRadi = np.arange(0.5, fovHeight/2.-barSize+stepSize, stepSize)
 maxRadi = minRadi + barSize
 radiPairs = zip(minRadi, maxRadi)
 
@@ -183,9 +153,10 @@ for ind, combi in enumerate(combis):
                                              rMax=combi[0][1],
                                              thetaMin=combi[1][0],
                                              thetaMax=combi[1][1])
-
+# add frame in the beginning with all zeros
 binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
                            binMasks), axis=2)
+# save as png images
 np.save("/home/marian/Documents/Testing/CircleBarApertures/Masks", binMasks)
 # save array as images, if wanted
 for ind in np.arange(binMasks.shape[-1]):
@@ -215,7 +186,7 @@ for i in range(binMasks.shape[-1]):
 binMasksRampedPsyPy = binMasksRamped*2 - 1
 np.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/RampedMasks",
         binMasksRampedPsyPy)
-# save array as images, if wanted
+# save as png images
 for ind in np.arange(binMasksRamped.shape[-1]):
     im = Image.fromarray((255*binMasksRamped[..., ind]).astype(np.uint8))
     im.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/Ima" +
