@@ -74,7 +74,6 @@ myWin = visual.Window(
     units='pix',
     blendMode='avg')
 
-
 movRTP = visual.GratingStim(
     myWin,
     tex=np.zeros((dim, dim)),

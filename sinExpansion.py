@@ -8,9 +8,8 @@ Created on Tue Oct 24 16:46:04 2017
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import numpy as np
 import os
-from itertools import cycle
+from scipy import signal
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
-from copy import copy
 
 # %%
 """ SAVING and LOGGING """
@@ -69,7 +68,7 @@ logging.console.setLevel(logging.WARNING)  # set console to receive warnings
 # set monitor information:
 distanceMon = 99  # [99 for Nova coil]
 widthMon = 30  # [30 for Nova coil]
-PixW = 1200.0  # [1920.0] in scanner
+PixW = 1920.0  # [1920.0] in scanner
 PixH = 1200.0  # [1200.0] in scanner
 
 moni = monitors.Monitor('testMonitor', width=widthMon, distance=distanceMon)
@@ -82,13 +81,12 @@ logFile.write('PixelWidth=' + unicode(PixW) + '\n')
 logFile.write('PixelHeight=' + unicode(PixH) + '\n')
 
 # set screen:
-# for psychoph lab: make 'fullscr = True', set size =(1920, 1080)
 myWin = visual.Window(
     size=(PixW, PixH),
     screen=0,
     winType='pyglet',  # winType : None, ‘pyglet’, ‘pygame’
     allowGUI=False,
-    allowStencil=False,
+    allowStencil=True,
     fullscr=False,  # for psychoph lab: fullscr = True
     monitor=moni,
     color=[0, 0, 0],
@@ -96,21 +94,18 @@ myWin = visual.Window(
     units='pix',
     blendMode='avg')
 
-# Speed of the dots (in deg per second)
-speedPixPerSec = misc.deg2pix(30, moni)  # 0.01
 # The size of the field.
 fieldSizeinDeg = 10
 fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
 
-logFile.write('speedPixPerSec=' + unicode(speedPixPerSec) + '\n')
 logFile.write('fieldSizeinDeg=' + unicode(fieldSizeinDeg) + '\n')
 logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 
 # %%
 """DURATIONS"""
 # get timings for apertures and motion directions
-Conditions = np.array([[0, 11, 22, 33, 44, 12, 34, 58],
-                       [2, 2, 2, 2, 2, 2, 2, 2]]).T
+Conditions = np.array([[0, 11, 22, 33, 44, 55, 63, 4, 10, 40],
+                       [2, 0, 1, 2, 0, 1, 2, 2, 2, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
@@ -122,16 +117,15 @@ ExpectedTR = 2
 TriggerPressedArray = np.array([])
 TargetPressedArray = np.array([])
 
-# %% define rotating and expanding sine wave (noiseTexture)
+# %%
 """TEXTURE AND MASKS"""
 
 # define the texture
-
 dim = 512
 nFrames = 60
 
-x, y = np.meshgrid(np.arange(-dim/2., dim/2.)+0.5,
-                   np.arange(-dim/2., dim/2.)+0.5)
+x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
+                   np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
 
 
 def cart2pol(x, y):
@@ -139,30 +133,149 @@ def cart2pol(x, y):
     t = np.arctan2(y, x)
     return t, r
 
+
 # if necessary scale the vector length
 theta, radius = cart2pol(x, y)
 
 phase = np.linspace(0., 4.*np.pi, nFrames)
 
+spatFreq = 1
+
 noiseTexture = np.zeros((dim, dim, nFrames))
 
 for ind, t in enumerate(phase):
-    ima = np.sin(0.1 * radius - t)
+    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - t)
     noiseTexture[..., ind] = ima
 
-# add the mask
-binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/Masks.npy")
-# turn 0 to -1 (since later on this will be used as mask for GratingStim),
-# where -1 means that values are not passed, 0 means values are half-passed
-binMasks[binMasks == 0] = -1
+# retrieve the different masks
+binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                   "ramped/RampedMasks.npy")
 
 
 # %%
-"""FUNCTIONS"""
-# update flicker in a square wave fashion
-# with every frame
+"""STIMULI"""
+# main stimulus
+movRTP = visual.GratingStim(
+    myWin,
+    tex=np.zeros((dim, dim)),
+    mask='none',
+    pos=(0.0, 0.0),
+    size=(fieldSizeinPix, fieldSizeinPix),
+    sf=None,
+    ori=0.0,
+    phase=(0.0, 0.0),
+    color=(1.0, 1.0, 1.0),
+    colorSpace='rgb',
+    contrast=1.0,
+    opacity=1.0,
+    depth=0,
+    rgbPedestal=(0.0, 0.0, 0.0),
+    interpolate=False,
+    name='movingRTP',
+    autoLog=None,
+    autoDraw=False,
+    maskParams=None)
+
+# fixation dot
+dotFix = visual.Circle(
+    myWin,
+    autoLog=False,
+    name='dotFix',
+    radius=2,
+    fillColor=[1.0, 0.0, 0.0],
+    lineColor=[1.0, 0.0, 0.0],)
+
+# surround of the fixation dot
+dotFixSurround = visual.Circle(
+    myWin,
+    autoLog=False,
+    name='dotFixSurround',
+    radius=7,
+    fillColor=[0.5, 0.5, 0.0],
+    lineColor=[0.0, 0.0, 0.0],)
+
+# fixation grid circle
+Circle = visual.Polygon(
+    win=myWin,
+    name='Circle',
+    edges=90,
+    ori=0,
+    units='deg',
+    pos=[0, 0],
+    lineWidth=2,
+    lineColor=[1.0, 1.0, 1.0],
+    lineColorSpace='rgb',
+    fillColor=None,
+    fillColorSpace='rgb',
+    opacity=1,
+    interpolate=True,
+    autoLog=False,)
+
+# fixation grid line
+Line = visual.Line(
+    win=myWin,
+    name='Line',
+    autoLog=False,
+    start=(-PixH, 0),
+    end = (PixH, 0),
+    pos=[0, 0],
+    lineWidth=2,
+    lineColor=[1.0, 1.0, 1.0],
+    lineColorSpace='rgb',
+    fillColor=None,
+    fillColorSpace='rgb',
+    opacity=1,
+    interpolate=True,)
+
+# initialisation method
+message = visual.TextStim(
+    myWin,
+    text='Condition',
+    height=30,
+    pos=(400, 400)
+    )
+
+triggerText = visual.TextStim(
+    win=myWin,
+    color='white',
+    height=30,
+    text='Experiment will start soon. \n Waiting for scanner',)
+
+targetText = visual.TextStim(
+    win=myWin,
+    color='white',
+    height=30,
+    autoLog=False,
+    )
+
+# %%
+"""TIME AND TIMING PARAMETERS"""
+
+# get screen refresh rate
+refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
+if refr_rate is not None:
+    frameDur = 1.0/round(refr_rate)
+else:
+    frameDur = 1.0/nFrames  # couldn't get a reliable measure so guess
+print "refr_rate:"
+print refr_rate
+logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
+logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
+
+# set durations
+nrOfVols = 8
+durations = np.ones(nrOfVols)*2
+totalTime = ExpectedTR*nrOfVols
 
 
+def time2frame(t, frameRate=60):
+    """Convert time to frames"""
+    # time wil be between 0 and TR
+    # frames should be between 0 and TR*frameRate
+    return t*frameRate
+
+
+# create function to time ramped onsets and offsets
 def raisedCos(steps, T=0.5, beta=0.5):
     """"Create binary wedge-and-ring mask.
     Parameters
@@ -191,124 +304,19 @@ def raisedCos(steps, T=0.5, beta=0.5):
             hf[ind] = 0
     return hf
 
-raisedCosine = raisedCos(60, T=1, beta=0.3)[:nFrames/4.]
+#window2 = signal.hann(20)[:20/2.]
+#
+#window = raisedCos(nFrames, T=1, beta=0.3)[:nFrames/2.]
+#tempArray = np.zeros(nFrames)
+#tempArray[nFrames/4.:-nFrames/4.] = 1
+#tempArray[:nFrames/4.] = window
+#tempArray[-nFrames/4.:] = window[::-1]
 
-tempArray = np.zeros(nFrames)
-tempArray[nFrames/4.:-nFrames/4.] = 1
-tempArray[:nFrames/4.] = raisedCosine
-tempArray[-nFrames/4.:] = raisedCosine[::-1]
-
-tempCycle = np.nditer(tempArray)
-
-# %%
-"""STIMULI"""
-# main stimulus
-movRTP = visual.GratingStim(
-    myWin,
-    tex=noiseTexture[..., 0],
-    mask='none',
-    pos=(0.0, 0.0),
-    size=(fieldSizeinPix, fieldSizeinPix),
-    sf=None,
-    ori=0.0,
-    phase=(0.0, 0.0),
-    color=(1.0, 1.0, 1.0),
-    colorSpace='rgb',
-    contrast=1.0,
-    opacity=0.0,
-    depth=0,
-    rgbPedestal=(0.0, 0.0, 0.0),
-    interpolate=False,
-    name='movingRTP',
-    autoLog=None,
-    autoDraw=False,
-    maskParams=None)
-
-# fixation dot
-dotFix = visual.Circle(
-    myWin,
-    autoLog=False,
-    name='dotFix',
-    radius=2,
-    fillColor=[1.0, 0.0, 0.0],
-    lineColor=[1.0, 0.0, 0.0],)
-
-dotFixSurround = visual.Circle(
-    myWin,
-    autoLog=False,
-    name='dotFixSurround',
-    radius=7,
-    fillColor=[0.5, 0.5, 0.0],
-    lineColor=[0.0, 0.0, 0.0],)
-
-# fixation grid
-Circle = visual.Polygon(
-    win=myWin,
-    name='Circle',
-    edges=90,
-    ori=0,
-    units='deg',
-    pos=[0, 0],
-    lineWidth=2,
-    lineColor=[1.0, 1.0, 1.0],
-    lineColorSpace='rgb',
-    fillColor=None,
-    fillColorSpace='rgb',
-    opacity=1,
-    interpolate=True,
-    autoLog=False,)
-Line = visual.Line(
-    win=myWin,
-    name='Line',
-    autoLog=False,
-    start=(-PixH, 0),
-    end = (PixH, 0),
-    pos=[0, 0],
-    lineWidth=2,
-    lineColor=[1.0, 1.0, 1.0],
-    lineColorSpace='rgb',
-    fillColor=None,
-    fillColorSpace='rgb',
-    opacity=1,
-    interpolate=True,)
-# initialisation method
-message = visual.TextStim(
-    myWin,
-    text='Condition',
-    height=30,
-    pos=(400, 400)
-    )
-triggerText = visual.TextStim(
-    win=myWin,
-    color='white',
-    height=30,
-    text='Experiment will start soon. \n Waiting for scanner',)
-targetText = visual.TextStim(
-    win=myWin,
-    color='white',
-    height=30,
-    autoLog=False,
-    )
-
-# %%
-"""TIME AND TIMING PARAMETERS"""
-
-# get screen refresh rate
-refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
-if refr_rate is not None:
-    frameDur = 1.0/round(refr_rate)
-else:
-    frameDur = 1.0/nFrames  # couldn't get a reliable measure so guess
-print "refr_rate:"
-print refr_rate
-logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
-logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
-
-
-# set durations
-nrOfVols = 8
-durations = np.ones(nrOfVols)*2
-totalTime = ExpectedTR*nrOfVols
+tempArray = np.hstack((np.ones(nFrames/10.), np.zeros(nFrames/10.),
+                       np.ones(nFrames/10.), np.zeros(nFrames/10.),
+                       np.ones(nFrames/10.), np.zeros(nFrames/2.)))
+# get the array to cycle opcaicty
+cycOpa = np.nditer(tempArray)
 
 # create clock and Landolt clock
 clock = core.Clock()
@@ -326,6 +334,7 @@ core.wait(1)
 triggerText.draw()
 myWin.flip()
 event.waitKeys(keyList=['5'], timeStamped=False)
+
 # reset clocks
 clock.reset()
 logging.data('StartOfRun' + unicode(expInfo['run']))
@@ -333,7 +342,8 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 while clock.getTime() < totalTime:
 
     # reset iterator for opacity
-    tempCycle.reset()
+    print "refresh"
+    cycOpa.reset()
 
     # get key for motion direction (expanding/ dilation/static)
     keyMotDir = Conditions[i, 1]
@@ -349,14 +359,14 @@ while clock.getTime() < totalTime:
     # static/flicker control
     elif keyMotDir == 2:
         # define cycle for control condition
-        controlArray = np.sin(phase)
-        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
-        controlArray[np.less(controlArray, 0.)] = -1
-        controlArray[np.greater(controlArray, 0.)] = 1
-        tempIt = np.nditer(controlArray)
+#        controlArray = np.sin(phase)
+#        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
+#        controlArray[np.less(controlArray, 0.)] = -1
+#        controlArray[np.greater(controlArray, 0.)] = 1
+#        tempIt = np.nditer(controlArray)
 
-#        tempIt = np.nditer(np.hstack([np.ones(nFrames)*14,
-#                                      np.ones(nFrames)*14]))
+        tempIt = np.nditer(np.hstack([np.ones(nFrames)*14,
+                                      np.ones(nFrames)*14]))
 
     # get key for mask
     keyMask = Conditions[i, 0]
@@ -385,13 +395,11 @@ while clock.getTime() < totalTime:
 #        Line.draw()
 
         # set texture
-#        movRTP.tex = noiseTexture[..., float(tempIt.next())]
-        movRTP.tex = noiseTexture[..., 0]
-#        movRTP.contrast = float(tempIt.next())
-        movRTP.opacity = 1
-
+        movRTP.tex = noiseTexture[..., float(tempIt.next())]
         # set opacity such that it follows a raised cosine fashion
-#        movRTP.opacity = float(tempCycle.next())
+        ali = np.copy(float(cycOpa.next()))
+        movRTP.opacity = float(ali)
+        print float(ali)
         # set mask
         movRTP.mask = tmask
         # draw stimulus
@@ -415,8 +423,8 @@ while clock.getTime() < totalTime:
         # draw fixation point
         dotFix.draw()
 
-#        message.setText(clock.getTime())
-#        message.draw()
+        message.setText(clock.getTime())
+        message.draw()
 
         # draw frame
         myWin.flip()
