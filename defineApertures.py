@@ -194,7 +194,7 @@ for ind in np.arange(binMasks.shape[2]):
             str(ind) + ".png")
 
 # create masks with raised cosines
-binMasksRamped = np.empty((pix, pix, len(combis)), dtype='bool')
+binMasksRamped = np.empty((pix, pix, binMasks.shape[-1]), dtype='bool')
 
 for i in range(binMasks.shape[-1]):
     # get a single mask
