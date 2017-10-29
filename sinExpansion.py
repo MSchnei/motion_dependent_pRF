@@ -122,7 +122,7 @@ TargetPressedArray = np.array([])
 
 # define the texture
 dim = 512
-nFrames = 60
+nFrames = 120
 
 x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
                    np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
@@ -140,16 +140,29 @@ theta, radius = cart2pol(x, y)
 phase = np.linspace(0., 4.*np.pi, nFrames)
 
 spatFreq = 1
+angularCycles = 36
 
-noiseTexture = np.zeros((dim, dim, nFrames))
+stimTexture = np.zeros((dim, dim, nFrames))
 
 for ind, t in enumerate(phase):
     ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - t)
-    noiseTexture[..., ind] = ima
+    stimTexture[..., ind] = ima
+    
+ctrlTexture = np.zeros((dim, dim, 2))
+# get the array that divides field in angular cycles
+polCycles = np.sin(angularCycles*theta)
+polCycles[np.greater_equal(polCycles, 0)] = 1
+polCycles[np.less(polCycles, 0)] = -1
+# get radial sine wave gratings
+ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
+ima = ima * polCycles
+ctrlTexture[..., 0] = ima
+ctrlTexture[..., 1] = np.copy(ima *-1)
+
 
 # retrieve the different masks
-binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                   "ramped/RampedMasks.npy")
+binMasks = np.load("/Users/Marian/gdrive/Research/MotionLocaliser/" +
+                   "RampedMasks.npy")
 
 
 # %%
@@ -351,10 +364,13 @@ while clock.getTime() < totalTime:
     # expanding motion
     if keyMotDir == 0:
         tempIt = np.nditer(np.tile(np.arange(nFrames), 2))
+        visTexture = stimTexture
 
     # contracting motion
     elif keyMotDir == 1:
         tempIt = np.nditer(np.tile(np.arange(nFrames), 2)[::-1])
+        visTexture = stimTexture
+
 
     # static/flicker control
     elif keyMotDir == 2:
@@ -365,8 +381,10 @@ while clock.getTime() < totalTime:
 #        controlArray[np.greater(controlArray, 0.)] = 1
 #        tempIt = np.nditer(controlArray)
 
-        tempIt = np.nditer(np.hstack([np.ones(nFrames)*14,
-                                      np.ones(nFrames)*14]))
+        tempIt = np.nditer(np.hstack([np.zeros(nFrames),
+                                      np.ones(nFrames)]))
+        visTexture = ctrlTexture
+
 
     # get key for mask
     keyMask = Conditions[i, 0]
@@ -395,7 +413,7 @@ while clock.getTime() < totalTime:
 #        Line.draw()
 
         # set texture
-        movRTP.tex = noiseTexture[..., float(tempIt.next())]
+        movRTP.tex = visTexture[..., float(tempIt.next())]
         # set opacity such that it follows a raised cosine fashion
         ali = np.copy(float(cycOpa.next()))
         movRTP.opacity = float(ali)
