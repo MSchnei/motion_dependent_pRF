@@ -81,7 +81,7 @@ phase = np.linspace(0., 4.*np.pi, 72.)
 lamb = np.sin(phase)/4. + 0.5
 
 dim = 1024
-numSquares = 4
+numSquares = 8
 
 noiseTexture = np.zeros((dim, dim, 72))
 X, Y = np.meshgrid(np.linspace(-PixH/2., PixH/2., dim, endpoint=False)+1,
