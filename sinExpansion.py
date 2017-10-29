@@ -140,7 +140,7 @@ theta, radius = cart2pol(x, y)
 phase = np.linspace(0., 4.*np.pi, nFrames)
 
 spatFreq = 1
-angularCycles = 12
+angularCycles = 32
 
 stimTexture = np.zeros((dim, dim, nFrames))
 
@@ -158,6 +158,14 @@ ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
 ima = ima * polCycles
 ctrlTexture[..., 0] = np.copy(ima)
 ctrlTexture[..., 1] = np.copy(ima) * -1
+
+# binarize
+stimTexture[np.greater_equal(stimTexture, 0)] = 1
+stimTexture[np.less(stimTexture, 0)] = -1
+
+ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
+ctrlTexture[np.less(ctrlTexture, 0)] = -1
+
 
 
 # retrieve the different masks
@@ -380,9 +388,10 @@ while clock.getTime() < totalTime:
 #        controlArray[np.less(controlArray, 0.)] = -1
 #        controlArray[np.greater(controlArray, 0.)] = 1
 #        tempIt = np.nditer(controlArray)
-
-        tempIt = np.nditer(np.hstack([np.zeros(nFrames),
-                                      np.ones(nFrames)]))
+        flickerRate = 8
+        tempIt = np.nditer(np.tile(np.hstack([np.zeros(nFrames/flickerRate),
+                                             np.ones(nFrames/flickerRate)]),
+                                   flickerRate/2.))
         visTexture = ctrlTexture
 
 
@@ -413,11 +422,11 @@ while clock.getTime() < totalTime:
 #        Line.draw()
 
         # set texture
-        movRTP.tex = visTexture[..., float(tempIt.next())]
+        movRTP.tex = visTexture[..., int(tempIt.next())]
         # set opacity such that it follows a raised cosine fashion
-        ali = np.copy(float(cycOpa.next()))
-        movRTP.opacity = float(ali)
-        print float(ali)
+#        ali = np.copy(int(cycOpa.next()))
+#        movRTP.opacity = int(ali)
+#        print int(ali)
         # set mask
         movRTP.mask = tmask
         # draw stimulus
