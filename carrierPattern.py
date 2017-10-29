@@ -16,26 +16,38 @@ def cart2pol(x, y):
     return(phi, rho)
 
 
+def doRotation(x, y, RotRad=0):
+    """Generate a meshgrid and rotate it by RotRad radians."""
+
+    # Clockwise, 2D rotation matrix
+    RotMatrix = np.array([[np.cos(RotRad),  np.sin(RotRad)],
+                          [-np.sin(RotRad), np.cos(RotRad)]])
+
+    rot = np.einsum('ji, mni -> jmn', RotMatrix, np.dstack([x, y]))
+    rot = np.transpose(rot, (1, 2, 0))
+    return rot[..., 0], rot[..., 1]
+
 def PrettyPattern(lamb, sptfrq, phase, width, dim):
     """
-     Draws a pretty pattern stimulus.
-
-     Parameters:
-       lambda :    Wavelength of the sinusoid
-       sptfrq :    Spatial frequency of checkers
-       phase :     Phase of the sinusoid
-       width :     Width of the image
-
-     The function returns the new image.
+    Draws a pretty pattern stimulus.
+    
+    Parameters:
+        lambda :    Wavelength of the sinusoid
+        sptfrq :    Spatial frequency of checkers
+        phase :     Phase of the sinusoid
+        width :     Width of the image
+    
+    The function returns the new image.
     """
 
     # Parameters for all pixels
     X, Y = np.meshgrid(np.linspace(-width/2, width/2-1, dim),
                        np.linspace(-width/2, width/2-1, dim))
+    X, Y = doRotation(X, Y, RotRad=np.pi/4.)
     T, R = cart2pol(X, Y)
 
     # Luminance modulation at each pixel
-    nom = (np.sin(((sptfrq*np.pi*X)/180.)) + np.cos(((sptfrq*np.pi*Y)/180.)))
+    nom = np.sin(((sptfrq*np.pi*X)/180.)) + np.cos(((sptfrq*np.pi*Y)/180.))
     img = R * (np.cos(2*np.pi*nom / lamb + phase))
 
     return img
@@ -122,7 +134,6 @@ ind = 0
 while switch:
     print int(ind)
     movRTP.tex = noiseTexture[..., int(ind)]
-    movRTP.ori = 45
     movRTP.draw()
     myWin.flip()
     ind += 0.5
