@@ -140,7 +140,7 @@ theta, radius = cart2pol(x, y)
 phase = np.linspace(0., 4.*np.pi, nFrames)
 
 spatFreq = 1
-angularCycles = 36
+angularCycles = 12
 
 stimTexture = np.zeros((dim, dim, nFrames))
 
@@ -156,8 +156,8 @@ polCycles[np.less(polCycles, 0)] = -1
 # get radial sine wave gratings
 ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
 ima = ima * polCycles
-ctrlTexture[..., 0] = ima
-ctrlTexture[..., 1] = np.copy(ima *-1)
+ctrlTexture[..., 0] = np.copy(ima)
+ctrlTexture[..., 1] = np.copy(ima) * -1
 
 
 # retrieve the different masks
