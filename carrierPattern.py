@@ -27,28 +27,46 @@ def doRotation(x, y, RotRad=0):
     rot = np.transpose(rot, (1, 2, 0))
     return rot[..., 0], rot[..., 1]
 
-def PrettyPattern(lamb, sptfrq, phase, width, dim):
+def PrettyPattern(lamb, sptfrq, phase, numSquares, dim):
     """
     Draws a pretty pattern stimulus.
     
     Parameters:
-        lambda :    Wavelength of the sinusoid
-        sptfrq :    Spatial frequency of checkers
-        phase :     Phase of the sinusoid
-        width :     Width of the image
+        lambda
+            Wavelength of the sinusoid
+        sptfrq
+            Spatial frequency of checkers
+        phase
+            Phase of the sinusoid
+        numSquares
+            Number of Squares in the image
     
     The function returns the new image.
     """
 
-    # Parameters for all pixels
-    X, Y = np.meshgrid(np.linspace(-width/2, width/2-1, dim),
-                       np.linspace(-width/2, width/2-1, dim))
-    X, Y = doRotation(X, Y, RotRad=np.pi/4.)
-    T, R = cart2pol(X, Y)
+    # 1 square is equivalent to 360 degree input
+    width = numSquares * 360
+    # what matters is the diagonal, so shrink width with sqrt(2)/2
+    width = width * np.sqrt(2)/2
 
+    # get meshgrid of X and Y coordinates
+    X, Y = np.meshgrid(np.linspace(-width/2, width/2, dim),
+                       np.linspace(-width/2, width/2, dim))
+    # rotate by 45 degress
+    X, Y = doRotation(X, Y, RotRad=np.pi/4.)
+    # set X[0, 0] to 270, since np.sin(270) = -1
+    if np.greater_equal(X[0, 0], 0):
+        X = X + X[0, 0] + 270
+    else:
+        X = X - X[0, 0] + 270
+    # set Y[0, 0] to 0, since np.cos(0) = 1
+    if np.greater_equal(Y[0, 0], 0):
+        Y = Y + Y[0, 0]
+    else:
+        Y = Y - Y[0, 0]
     # Luminance modulation at each pixel
     nom = np.sin(((sptfrq*np.pi*X)/180.)) + np.cos(((sptfrq*np.pi*Y)/180.))
-    img = R * (np.cos(2*np.pi*nom / lamb + phase))
+    img = (np.cos(2*np.pi*nom / lamb + phase))
 
     return img
 
@@ -63,6 +81,7 @@ phase = np.linspace(0., 4.*np.pi, 72.)
 lamb = np.sin(phase)/4. + 0.5
 
 dim = 1024
+numSquares = 4
 
 noiseTexture = np.zeros((dim, dim, 72))
 X, Y = np.meshgrid(np.linspace(-PixH/2., PixH/2., dim, endpoint=False)+1,
@@ -70,7 +89,7 @@ X, Y = np.meshgrid(np.linspace(-PixH/2., PixH/2., dim, endpoint=False)+1,
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
-    ima = PrettyPattern(d, 1, t, PixH, dim)
+    ima = PrettyPattern(d, 1, t, numSquares, dim)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
     ima[np.less_equal(ima, 0)] = -1
