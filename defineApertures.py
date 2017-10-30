@@ -129,7 +129,7 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
 
 # %% stimulus settings
 fovHeight = 11.
-pix = 512
+pix = 1024
 barSize = 1.5
 stepSize = 0.5
 

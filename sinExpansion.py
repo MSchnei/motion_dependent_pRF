@@ -87,7 +87,7 @@ myWin = visual.Window(
     winType='pyglet',  # winType : None, ‘pyglet’, ‘pygame’
     allowGUI=False,
     allowStencil=True,
-    fullscr=False,  # for psychoph lab: fullscr = True
+    fullscr=True,  # for psychoph lab: fullscr = True
     monitor=moni,
     color=[0, 0, 0],
     colorSpace='rgb',
@@ -104,8 +104,9 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 # %%
 """DURATIONS"""
 # get timings for apertures and motion directions
-Conditions = np.array([[0, 11, 22, 33, 44, 55, 63, 4, 10, 40],
-                       [2, 0, 1, 2, 0, 1, 2, 2, 2, 2]]).T
+Conditions = np.array(
+    [[0, 11, 22, 33, 44, 55, 63, 4, 9, 40, 12, 24, 31, 45, 50, 64, 6, 12, 41],
+     [2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
@@ -121,8 +122,8 @@ TargetPressedArray = np.array([])
 """TEXTURE AND MASKS"""
 
 # define the texture
-dim = 512
-nFrames = 120
+dim = 1024
+nFrames = 60
 
 x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
                    np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
@@ -139,21 +140,22 @@ theta, radius = cart2pol(x, y)
 
 phase = np.linspace(0., 4.*np.pi, nFrames)
 
-spatFreq = 1
+spatFreq = 1.5
 angularCycles = 32
 
-stimTexture = np.zeros((dim, dim, nFrames))
-
-for ind, t in enumerate(phase):
-    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - t)
-    stimTexture[..., ind] = ima
-    
-ctrlTexture = np.zeros((dim, dim, 2))
 # get the array that divides field in angular cycles
 polCycles = np.sin(angularCycles*theta)
 polCycles[np.greater_equal(polCycles, 0)] = 1
 polCycles[np.less(polCycles, 0)] = -1
-# get radial sine wave gratings
+
+# get radial sine wave gratings for main conditions
+stimTexture = np.zeros((dim, dim, nFrames))
+for ind, t in enumerate(phase):
+    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - t)
+    stimTexture[..., ind] = ima
+
+# get radial sine wave gratings for control condition
+ctrlTexture = np.zeros((dim, dim, 2))
 ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
 ima = ima * polCycles
 ctrlTexture[..., 0] = np.copy(ima)
@@ -169,8 +171,8 @@ ctrlTexture[np.less(ctrlTexture, 0)] = -1
 
 
 # retrieve the different masks
-binMasks = np.load("/Users/Marian/gdrive/Research/MotionLocaliser/" +
-                   "RampedMasks.npy")
+binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                   "ramped/RampedMasks.npy")
 
 
 # %%
@@ -371,17 +373,19 @@ while clock.getTime() < totalTime:
 
     # expanding motion
     if keyMotDir == 0:
+        print("expanding")
         tempIt = np.nditer(np.tile(np.arange(nFrames), 2))
         visTexture = stimTexture
 
     # contracting motion
     elif keyMotDir == 1:
+        print("contracting")
         tempIt = np.nditer(np.tile(np.arange(nFrames), 2)[::-1])
         visTexture = stimTexture
 
-
     # static/flicker control
     elif keyMotDir == 2:
+        print("flicker")
         # define cycle for control condition
 #        controlArray = np.sin(phase)
 #        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
