@@ -27,15 +27,13 @@ def doRotation(x, y, RotRad=0):
     rot = np.transpose(rot, (1, 2, 0))
     return rot[..., 0], rot[..., 1]
 
-def PrettyPattern(lamb, sptfrq, phase, numSquares, dim):
+def PrettyPattern(lamb, phase, numSquares, dim):
     """
     Draws a pretty pattern stimulus.
     
     Parameters:
         lambda
             Wavelength of the sinusoid
-        sptfrq
-            Spatial frequency of checkers
         phase
             Phase of the sinusoid
         numSquares
@@ -65,7 +63,7 @@ def PrettyPattern(lamb, sptfrq, phase, numSquares, dim):
     else:
         Y = Y - Y[0, 0]
     # Luminance modulation at each pixel
-    nom = np.sin(((sptfrq*np.pi*X)/180.)) + np.cos(((sptfrq*np.pi*Y)/180.))
+    nom = np.sin(((np.pi*X)/180.)) + np.cos(((np.pi*Y)/180.))
     img = (np.cos(2*np.pi*nom / lamb + phase))
 
     return img
@@ -76,7 +74,6 @@ widthMon = 30  # [30 for Nova coil]
 PixW = 1920.0  # [1920.0] in scanner
 PixH = 1200.0  # [1200.0] in scanner
 
-# replace the 4s with sptfrq??
 phase = np.linspace(0., 4.*np.pi, 72.)
 lamb = np.sin(phase)/4. + 0.5
 
@@ -89,7 +86,7 @@ X, Y = np.meshgrid(np.linspace(-PixH/2., PixH/2., dim, endpoint=False)+1,
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
-    ima = PrettyPattern(d, 1, t, numSquares, dim)
+    ima = PrettyPattern(d, t, numSquares, dim)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
     ima[np.less_equal(ima, 0)] = -1
