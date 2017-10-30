@@ -10,6 +10,7 @@ import numpy as np
 import os
 from scipy import signal
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
+from utils import (cart2pol, time2frame, raisedCos)
 
 # %%
 """ SAVING and LOGGING """
@@ -130,13 +131,6 @@ cycPerSec = 2.5
 x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
                    np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
 
-
-def cart2pol(x, y):
-    r = np.sqrt(x**2+y**2)
-    t = np.arctan2(y, x)
-    return t, r
-
-
 # get polar coordinates which are needed to define the textures
 theta, radius = cart2pol(x, y)
 # define the phase for inward/outward conditin
@@ -173,17 +167,16 @@ ctrlTexture[np.less(ctrlTexture, 0)] = -1
 ctrlTexture = ctrlTexture.astype('int8')
 
 # retrieve the different masks
-opaMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                   "opa/opaMasks.npy").astype('int32')
-contrMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                     "contr/contrMasks.npy").astype('float32')
-boolMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                    "bool/boolMasks.npy").astype('bool')
+opaPgDnMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                       "opa/opaPgDnMasks.npy").astype('int32')
+opaPgUpMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                       "opa/opaPgUpMasks.npy").astype('float32')
+midGreyTexture = np.zeros((dim, dim))
 
 # %%
 """STIMULI"""
 # main stimulus
-movRTP = visual.GratingStim(
+radSqrWave = visual.GratingStim(
     myWin,
     tex=np.zeros((dim, dim)),
     mask='none',
@@ -199,7 +192,28 @@ movRTP = visual.GratingStim(
     depth=0,
     rgbPedestal=(0.0, 0.0, 0.0),
     interpolate=False,
-    name='movingRTP',
+    name='radSqrWave',
+    autoLog=None,
+    autoDraw=False,
+    maskParams=None)
+
+radSqrWaveBckgr = visual.GratingStim(
+    myWin,
+    tex=np.zeros((dim, dim)),
+    mask='none',
+    pos=(0.0, 0.0),
+    size=(fieldSizeinPix, fieldSizeinPix),
+    sf=None,
+    ori=0.0,
+    phase=(0.0, 0.0),
+    color=(1.0, 1.0, 1.0),
+    colorSpace='rgb',
+    contrast=1.0,
+    opacity=1.0,
+    depth=0,
+    rgbPedestal=(0.0, 0.0, 0.0),
+    interpolate=False,
+    name='radSqrWave',
     autoLog=None,
     autoDraw=False,
     maskParams=None)
@@ -209,7 +223,8 @@ dotFix = visual.Circle(
     myWin,
     autoLog=False,
     name='dotFix',
-    radius=2,
+    units='deg',
+    radius=0.125,
     fillColor=[1.0, 0.0, 0.0],
     lineColor=[1.0, 0.0, 0.0],)
 
@@ -218,9 +233,10 @@ dotFixSurround = visual.Circle(
     myWin,
     autoLog=False,
     name='dotFixSurround',
-    radius=7,
-    fillColor=[0.5, 0.5, 0.0],
-    lineColor=[0.0, 0.0, 0.0],)
+    units='deg',
+    radius=0.19,
+    fillColor=[1.0, 1.0, 1.0],
+    lineColor=[1.0, 1.0, 1.0],)
 
 # fixation grid circle
 Circle = visual.Polygon(
@@ -267,7 +283,7 @@ triggerText = visual.TextStim(
     win=myWin,
     color='white',
     height=30,
-    text='Experiment will start soon. \n Waiting for scanner',)
+    text='Experiment will start soon.',)
 
 targetText = visual.TextStim(
     win=myWin,
@@ -294,43 +310,6 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 nrOfVols = len(Conditions)
 durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
-
-
-def time2frame(t, frameRate=60):
-    """Convert time to frames"""
-    # time wil be between 0 and TR
-    # frames should be between 0 and TR*frameRate
-    return t*frameRate
-
-
-# create function to time ramped onsets and offsets
-def raisedCos(steps, T=0.5, beta=0.5):
-    """"Create binary wedge-and-ring mask.
-    Parameters
-    ----------
-    steps : float
-        Number of points in the output window
-    T: float
-        The symbol-period
-    beta : float
-        Roll-off factor
-    Returns
-    -------
-    hf : 1d np.array
-        Raised-cosine filter in frequency space
-    """
-
-    frequencies = np.linspace(-1/T, 1/T, steps)
-    hf = np.empty(len(frequencies))
-    for ind, f in enumerate(frequencies):
-        if np.less_equal(np.abs(f), (1-beta)/(2*T)):
-            hf[ind] = 1
-        elif np.logical_and(np.less_equal(np.abs(f), (1+beta)/(2*T)),
-                            np.greater(np.abs(f), (1-beta)/(2*T))):
-            hf[ind] = 0.5*(1+np.cos((np.pi*T/2)*(np.abs(f)-(1-beta)/2*T)))
-        else:
-            hf[ind] = 0
-    return hf
 
 #window2 = signal.hann(20)[:20/2.]
 #
@@ -397,43 +376,32 @@ while clock.getTime() < totalTime:
 
     # get key for masks
     keyMask = Conditions[i, 0]
-    # get mask to define the opacity values (all or none)
-    opaMask = np.squeeze(opaMasks[:, :, keyMask])
-    # get mask to define ramp contrast at the edges
-    contrMask = np.squeeze(contrMasks[:, :, keyMask])
-    # get mask with boolean for border
-    boolMask = np.squeeze(boolMasks[:, :, keyMask])
+    # get mask to define the opacity values (foreground)
+    opaPgUpMask = np.squeeze(opaPgUpMasks[:, :, keyMask])
+    # get mask to define the opacity values (background)
+    opaPgDnMask = np.squeeze(opaPgDnMasks[:, :, keyMask])
+
+    # set the background mask to opaPgDnMask
+    radSqrWaveBckgr.mask = opaPgDnMask
 
     # static/flicker control
     if Conditions[i, 1] == 0:
         tempIt = np.tile(
             np.repeat(np.array([0, 1]), nFrames/(cycPerSec*2)),
             cycPerSec*2).astype('int32')
-        visTexture = np.multiply(ctrlTexture,
-                                 contrMask[:, :, None]).astype('float32')
-#        visTexture = ctrlTexture
-#        visTexture[boolMask[:, :, None]] = np.multiply(
-#            ctrlTexture[boolMask[:, :, None]], contrMask[boolMask])
+        visTexture = ctrlTexture
 
     # contracting motion
     elif Conditions[i, 1] == 1:
         tempIt = np.tile(
             np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')[::-1]
-        visTexture = np.multiply(stimTexture,
-                                 contrMask[:, :, None]).astype('float32')
-#        visTexture = stimTexture
-#        visTexture[boolMask[:, :, None]] = np.multiply(
-#            stimTexture[boolMask[:, :, None]], contrMask[boolMask])
+        visTexture = stimTexture
 
     # expanding motion
     elif Conditions[i, 1] == 2:
         tempIt = np.tile(
             np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')
-        visTexture = np.multiply(stimTexture,
-                                 contrMask[:, :, None]).astype('float32')
-#        visTexture = stimTexture
-#        visTexture[boolMask[:, :, None]] = np.multiply(
-#            stimTexture[boolMask[:, :, None]], contrMask[boolMask])
+        visTexture = stimTexture
 
     while clock.getTime() < np.sum(durations[0:i+1]):
         # get interval time
@@ -444,16 +412,19 @@ while clock.getTime() < totalTime:
         # draw fixation grid (circles and lines)
         fixationGrid()
 
-        # set texture
-        movRTP.tex = visTexture[..., tempIt[int(frame)]]
+        # set opacity of background aperture
+        radSqrWaveBckgr.opacity = cycOpa[int(frame)]
+        # draw the background aperture
+        radSqrWaveBckgr.draw()
 
-        # set opacity such that it follows a raised cosine fashion
-        movRTP.opacity = cycOpa[int(frame)]
-
-        # set mask
-        movRTP.mask = opaMask
-        # draw stimulus
-        movRTP.draw()
+        # set the foreground aperture
+        radSqrWave.tex = visTexture[..., tempIt[int(frame)]]
+        # set opacity of foreground aperture
+        radSqrWave.opacity = cycOpa[int(frame)]
+        # set foreground mask to opaPgDnMask
+        radSqrWave.mask = opaPgUpMask
+        # draw the foreground aperture
+        radSqrWave.draw()
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
@@ -461,13 +432,13 @@ while clock.getTime() < totalTime:
            targets + 0.3) == len(targets)+1):
             # display target!
             # change color fix dot surround to red
-            dotFixSurround.fillColor = [0.5, 0.0, 0.0]
-            dotFixSurround.lineColor = [0.5, 0.0, 0.0]
+            dotFix.fillColor = [0.5, 0.0, 0.0]
+            dotFix.lineColor = [0.5, 0.0, 0.0]
         else:
             # dont display target!
             # keep color fix dot surround yellow
-            dotFixSurround.fillColor = [0.5, 0.5, 0.0]
-            dotFixSurround.lineColor = [0.5, 0.5, 0.0]
+            dotFix.fillColor = [1.0, 0.0, 0.0]
+            dotFix.lineColor = [1.0, 0.0, 0.0]
 
         # draw fixation point surround
         dotFixSurround.draw()
