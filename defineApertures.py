@@ -130,7 +130,7 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
 # %% stimulus settings
 fovHeight = 11.
 pix = 1024
-barSize = 1.5
+barSize = 1.0
 stepSize = 0.5
 
 # derive the radii for the ring limits
@@ -146,8 +146,8 @@ thetaPairs = zip(minTheta, maxTheta)
 # find all possible combinations between ring and wedge limits
 combis = list(itertools.product(radiPairs, thetaPairs))
 
-# %% create binary masks
-binMasks = np.empty((pix, pix, len(combis)), dtype='bool')
+# %% create masks for opacity (all or none)
+binMasks = np.empty((pix, pix, len(combis)), dtype='int32')
 for ind, combi in enumerate(combis):
     binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0][0],
                                              rMax=combi[0][1],
@@ -156,16 +156,29 @@ for ind, combi in enumerate(combis):
 # add frame in the beginning with all zeros
 binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
                            binMasks), axis=2)
+
+# for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
+# -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
+opaMasks = binMasks*2 - 1
+# ensure that it is int32 type
+opaMasks = opaMasks.astype('int32')
 # save as png images
-np.save("/home/marian/Documents/Testing/CircleBarApertures/Masks", binMasks)
+np.save("/home/marian/Documents/Testing/CircleBarApertures/opa/opaMasks",
+        opaMasks)
 # save array as images, if wanted
-for ind in np.arange(binMasks.shape[-1]):
-    im = Image.fromarray(binMasks[..., ind].astype(np.uint8)*255)
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/Ima" + "_" +
-            str(ind) + ".png")
+for ind in np.arange(opaMasks.shape[-1]):
+    im = Image.fromarray(opaMasks[..., ind].astype(np.uint8)*255)
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/opa/Ima" +
+            "_" + str(ind) + ".png")
+# delete opaMasks to save space
+del(opaMasks)
 
 # %% create masks with raised cosines
-binMasksRamped = np.empty((pix, pix, binMasks.shape[-1]), dtype='float32')
+
+# create masks for contrast
+contrMasks = np.empty((pix, pix, binMasks.shape[-1]), dtype='float32')
+# create booleans for border area where contrast is ramped
+boolMasks = np.empty((pix, pix, binMasks.shape[-1]), dtype='bool')
 
 for i in range(binMasks.shape[-1]):
     # get a single mask
@@ -174,20 +187,31 @@ for i in range(binMasks.shape[-1]):
     if np.greater(np.sum(binMask), 0):
         # get its distance image
         distIma = getDistIma(binMask, fovHeight, pix)
+        # get boolean for border are
+        boolMasks[..., i] = np.logical_and(np.less_equal(distIma, 0.25),
+                                           binMask)
         # assign raised cosine values to bixels less than 0.5 away from border
-        binMasksRamped[..., i] = assignBorderVals(binMask, distIma,
-                                                  borderRange=0.5)
+        contrMasks[..., i] = assignBorderVals(binMask, distIma,
+                                              borderRange=0.25)
     else:
-        # assign old mask
-        binMasksRamped[..., i] = binMask
+        # assign old contrast mask
+        contrMasks[..., i] = binMask
+        boolMasks[..., i] = binMask
 
+# save contrast mask as numpy array
+np.save("/home/marian/Documents/Testing/CircleBarApertures/contr/contrMasks",
+        contrMasks.astype('float32'))
+# save boolean border mask as numpy array
+np.save("/home/marian/Documents/Testing/CircleBarApertures/bool/boolMasks",
+        boolMasks.astype('bool'))
 
-# for psychopy we need numbers in range from -1 to 1 (instead of 0 to 1)
-binMasksRampedPsyPy = binMasksRamped*2 - 1
-np.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/RampedMasks",
-        binMasksRampedPsyPy)
-# save as png images
-for ind in np.arange(binMasksRamped.shape[-1]):
-    im = Image.fromarray((255*binMasksRamped[..., ind]).astype(np.uint8))
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/ramped/Ima" +
+# save contrast mask as png images
+for ind in np.arange(contrMasks.shape[-1]):
+    im = Image.fromarray((255*contrMasks[..., ind]).astype(np.uint8))
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/contr/Ima" +
+            "_" + str(ind) + ".png")
+# save bool border mask as png images
+for ind in np.arange(boolMasks.shape[-1]):
+    im = Image.fromarray((255*boolMasks[..., ind]).astype(np.uint8))
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/bool/Ima" +
             "_" + str(ind) + ".png")
