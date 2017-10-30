@@ -84,10 +84,10 @@ logFile.write('PixelHeight=' + unicode(PixH) + '\n')
 myWin = visual.Window(
     size=(PixW, PixH),
     screen=0,
-    winType='pyglet',  # winType : None, ‘pyglet’, ‘pygame’
+    winType='pyglet',
     allowGUI=False,
     allowStencil=True,
-    fullscr=True,  # for psychoph lab: fullscr = True
+    fullscr=True,
     monitor=moni,
     color=[0, 0, 0],
     colorSpace='rgb',
@@ -106,12 +106,12 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 # get timings for apertures and motion directions
 Conditions = np.array(
     [[0, 11, 22, 33, 44, 55, 63, 4, 9, 40, 12, 24, 31, 45, 50, 64, 6, 12, 41],
-     [2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
+     [0, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the targets
 targets = np.array([2, 4, 6, 8, 10])
-
+# set expected TR
 ExpectedTR = 2
 
 # create array to log key pressed events
@@ -124,7 +124,9 @@ TargetPressedArray = np.array([])
 # define the texture
 dim = 1024
 nFrames = 60
+cycPerSec = 2.5
 
+# get cartesian coordinates which are needed to define the textures
 x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
                    np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
 
@@ -135,12 +137,12 @@ def cart2pol(x, y):
     return t, r
 
 
-# if necessary scale the vector length
+# get polar coordinates which are needed to define the textures
 theta, radius = cart2pol(x, y)
-
-phase = np.linspace(0., 4.*np.pi, nFrames)
-
-spatFreq = 1.5
+# define the phase for inward/outward conditin
+phase = np.linspace(0., 2.*np.pi, nFrames/cycPerSec)
+# define the spatial frequency of the radial sine wave grating
+spatFreq = 2
 angularCycles = 32
 
 # get the array that divides field in angular cycles
@@ -149,9 +151,9 @@ polCycles[np.greater_equal(polCycles, 0)] = 1
 polCycles[np.less(polCycles, 0)] = -1
 
 # get radial sine wave gratings for main conditions
-stimTexture = np.zeros((dim, dim, nFrames))
-for ind, t in enumerate(phase):
-    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - t)
+stimTexture = np.zeros((dim, dim, nFrames/cycPerSec))
+for ind, ph in enumerate(phase):
+    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - ph)
     stimTexture[..., ind] = ima
 
 # get radial sine wave gratings for control condition
@@ -164,16 +166,19 @@ ctrlTexture[..., 1] = np.copy(ima) * -1
 # binarize
 stimTexture[np.greater_equal(stimTexture, 0)] = 1
 stimTexture[np.less(stimTexture, 0)] = -1
+stimTexture = stimTexture.astype('int8')
 
 ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
 ctrlTexture[np.less(ctrlTexture, 0)] = -1
-
-
+ctrlTexture = ctrlTexture.astype('int8')
 
 # retrieve the different masks
-binMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                   "ramped/RampedMasks.npy")
-
+opaMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                   "opa/opaMasks.npy").astype('int32')
+contrMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                     "contr/contrMasks.npy").astype('float32')
+boolMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
+                    "bool/boolMasks.npy").astype('bool')
 
 # %%
 """STIMULI"""
@@ -226,7 +231,7 @@ Circle = visual.Polygon(
     units='deg',
     pos=[0, 0],
     lineWidth=2,
-    lineColor=[1.0, 1.0, 1.0],
+    lineColor=[-0.2, -0.2, -0.2],
     lineColorSpace='rgb',
     fillColor=None,
     fillColorSpace='rgb',
@@ -243,7 +248,7 @@ Line = visual.Line(
     end = (PixH, 0),
     pos=[0, 0],
     lineWidth=2,
-    lineColor=[1.0, 1.0, 1.0],
+    lineColor=[-0.2, -0.2, -0.2],
     lineColorSpace='rgb',
     fillColor=None,
     fillColorSpace='rgb',
@@ -286,7 +291,7 @@ logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
-nrOfVols = 8
+nrOfVols = len(Conditions)
 durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
@@ -335,16 +340,42 @@ def raisedCos(steps, T=0.5, beta=0.5):
 #tempArray[:nFrames/4.] = window
 #tempArray[-nFrames/4.:] = window[::-1]
 
-tempArray = np.hstack((np.ones(nFrames/10.), np.zeros(nFrames/10.),
-                       np.ones(nFrames/10.), np.zeros(nFrames/10.),
-                       np.ones(nFrames/10.), np.zeros(nFrames/2.)))
-# get the array to cycle opcaicty
-cycOpa = np.nditer(tempArray)
+# define on/off cycle in ms
+lenCyc = 200.
+# derive how much of second that is
+div = 1000/lenCyc
+# define array to cycle opacity
+cycOpa = np.hstack((np.ones(nFrames/div), np.zeros(nFrames/div),
+                    np.ones(nFrames/div), np.zeros(nFrames/div),
+                    np.ones(nFrames/div), np.zeros(nFrames))
+                   ).astype('float32')
+cycOpa = np.ones(2*nFrames).astype('float32')
 
-# create clock and Landolt clock
+# create clock
 clock = core.Clock()
 logging.setDefaultClock(clock)
 
+# %%
+"""FUNCTIONS"""
+def fixationGrid():
+    Circle.setSize((2, 2))
+    Circle.draw()
+    Circle.setSize((4, 4))
+    Circle.draw()
+    Circle.setSize((6, 6))
+    Circle.draw()
+    Circle.setSize((8, 8))
+    Circle.draw()
+    Circle.setSize((10, 10))
+    Circle.draw()
+    Line.setOri(0)
+    Line.draw()
+    Line.setOri(45)
+    Line.draw()
+    Line.setOri(90)
+    Line.draw()
+    Line.setOri(135)
+    Line.draw()
 
 # %%
 """RENDER_LOOP"""
@@ -364,81 +395,70 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
-    # reset iterator for opacity
-    print "refresh"
-    cycOpa.reset()
-
-    # get key for motion direction (expanding/ dilation/static)
-    keyMotDir = Conditions[i, 1]
-
-    # expanding motion
-    if keyMotDir == 0:
-        print("expanding")
-        tempIt = np.nditer(np.tile(np.arange(nFrames), 2))
-        visTexture = stimTexture
-
-    # contracting motion
-    elif keyMotDir == 1:
-        print("contracting")
-        tempIt = np.nditer(np.tile(np.arange(nFrames), 2)[::-1])
-        visTexture = stimTexture
+    # get key for masks
+    keyMask = Conditions[i, 0]
+    # get mask to define the opacity values (all or none)
+    opaMask = np.squeeze(opaMasks[:, :, keyMask])
+    # get mask to define ramp contrast at the edges
+    contrMask = np.squeeze(contrMasks[:, :, keyMask])
+    # get mask with boolean for border
+    boolMask = np.squeeze(boolMasks[:, :, keyMask])
 
     # static/flicker control
-    elif keyMotDir == 2:
-        print("flicker")
-        # define cycle for control condition
-#        controlArray = np.sin(phase)
-#        controlArray[np.less_equal(np.abs(controlArray), 0.7)] = 0
-#        controlArray[np.less(controlArray, 0.)] = -1
-#        controlArray[np.greater(controlArray, 0.)] = 1
-#        tempIt = np.nditer(controlArray)
-        flickerRate = 8
-        tempIt = np.nditer(np.tile(np.hstack([np.zeros(nFrames/flickerRate),
-                                             np.ones(nFrames/flickerRate)]),
-                                   flickerRate/2.))
-        visTexture = ctrlTexture
+    if Conditions[i, 1] == 0:
+        tempIt = np.tile(
+            np.repeat(np.array([0, 1]), nFrames/(cycPerSec*2)),
+            cycPerSec*2).astype('int32')
+        visTexture = np.multiply(ctrlTexture,
+                                 contrMask[:, :, None]).astype('float32')
+#        visTexture = ctrlTexture
+#        visTexture[boolMask[:, :, None]] = np.multiply(
+#            ctrlTexture[boolMask[:, :, None]], contrMask[boolMask])
 
+    # contracting motion
+    elif Conditions[i, 1] == 1:
+        tempIt = np.tile(
+            np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')[::-1]
+        visTexture = np.multiply(stimTexture,
+                                 contrMask[:, :, None]).astype('float32')
+#        visTexture = stimTexture
+#        visTexture[boolMask[:, :, None]] = np.multiply(
+#            stimTexture[boolMask[:, :, None]], contrMask[boolMask])
 
-    # get key for mask
-    keyMask = Conditions[i, 0]
-    # get mask
-    tmask = np.squeeze(binMasks[:, :, keyMask])
+    # expanding motion
+    elif Conditions[i, 1] == 2:
+        tempIt = np.tile(
+            np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')
+        visTexture = np.multiply(stimTexture,
+                                 contrMask[:, :, None]).astype('float32')
+#        visTexture = stimTexture
+#        visTexture[boolMask[:, :, None]] = np.multiply(
+#            stimTexture[boolMask[:, :, None]], contrMask[boolMask])
 
     while clock.getTime() < np.sum(durations[0:i+1]):
+        # get interval time
+        t = clock.getTime() % ExpectedTR
+        # get respective frame
+        frame = time2frame(t, frameRate=nFrames)
+
         # draw fixation grid (circles and lines)
-#        Circle.setSize((2, 2))
-#        Circle.draw()
-#        Circle.setSize((4, 4))
-#        Circle.draw()
-#        Circle.setSize((6, 6))
-#        Circle.draw()
-#        Circle.setSize((8, 8))
-#        Circle.draw()
-#        Circle.setSize((10, 10))
-#        Circle.draw()
-#        Line.setOri(0)
-#        Line.draw()
-#        Line.setOri(45)
-#        Line.draw()
-#        Line.setOri(90)
-#        Line.draw()
-#        Line.setOri(135)
-#        Line.draw()
+        fixationGrid()
 
         # set texture
-        movRTP.tex = visTexture[..., int(tempIt.next())]
+        movRTP.tex = visTexture[..., tempIt[int(frame)]]
+
         # set opacity such that it follows a raised cosine fashion
-#        ali = np.copy(int(cycOpa.next()))
-#        movRTP.opacity = int(ali)
-#        print int(ali)
+        movRTP.opacity = cycOpa[int(frame)]
+
         # set mask
-        movRTP.mask = tmask
+        movRTP.mask = opaMask
         # draw stimulus
         movRTP.draw()
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
-        if sum(clock.getTime() >= targets) + sum(clock.getTime() < targets + 0.3) == len(targets)+1:
+        if (sum(clock.getTime() >= targets) + sum(clock.getTime() <
+           targets + 0.3) == len(targets)+1):
             # display target!
             # change color fix dot surround to red
             dotFixSurround.fillColor = [0.5, 0.0, 0.0]
