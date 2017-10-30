@@ -8,130 +8,17 @@ Created on Sun Oct 22 15:53:56 2017
 
 import itertools
 import numpy as np
-from scipy import spatial, signal
 from PIL import Image
+from utils import (createBarMask, createBinCircleMask, getDistIma,
+                   assignBorderVals)
 
-
-def cart2pol(x, y):
-    r = np.sqrt(x**2+y**2)
-    t = np.arctan2(y, x)
-    return t, r
-
-
-def pol2cart(r, t):
-    x = r * np.cos(t)
-    y = r * np.sin(t)
-    return(x, y)
-
-
-def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
-                        thetaMax=360.):
-
-    """Create binary wedge-and-ring mask.
-    Parameters
-    ----------
-    size : float
-        Size of the (background) square in deg of vis angle
-    numPixel : float
-        Number of pixels that should be used for the square
-    rMin : float
-        Minimum radius of the ring apertures in deg of vis angle
-    rMax : float
-        Maximum radius of the ring apertures in deg of vis angle
-    thetaMin : float
-        Minimum angle of the wedge apertures in deg
-    thetaMax : bool
-        Minimum angle of the wedge apertures in deg
-    Returns
-    -------
-    binMask : bool
-        binary wedge-and-ring mask
-    """
-
-    # verify that the maximum radius is not bigger than the size
-    if np.greater(rMax, size/2.):
-        rMax = np.copy(size/2.)
-        print "rMax was reset to max stim size."
-
-    # convert from deg to radius
-    thetaMin, thetaMax = np.deg2rad((thetaMin, thetaMax))
-
-    # ensure stop angle > start angle
-    if thetaMax < thetaMin:
-        thetaMax += (2*np.i)
-
-    # create meshgrid
-    x, y = np.meshgrid(np.linspace(-size/2., size/2., numPixel),
-                       np.linspace(-size/2., size/2., numPixel))
-
-    # convert to polar coordinates
-    theta, radius = cart2pol(x, y)
-    theta -= thetaMin
-
-    # normalize angles so they do not exceed 360 degrees
-    theta %= (2*np.pi)
-
-    # define ringMask
-    ringMask = np.logical_and(np.greater(radius, rMin),
-                              np.less_equal(radius, rMax))
-
-    wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
-
-    # return binary mask
-    return np.logical_and(ringMask, wedgeMask)
-
-
-def getDistIma(inputIma, fovHeight=10, pix=512):
-    # create meshgrid
-    x, y = np.meshgrid(np.linspace(-fovHeight/2., fovHeight/2., pix),
-                       np.linspace(-fovHeight/2., fovHeight/2., pix))
-    # identify border voxels
-    grad = np.gradient(inputIma)
-    gramag = np.greater(np.sqrt(np.power(grad[0], 2) + np.power(grad[1], 2)),
-                        0)
-    border = np.logical_and(gramag, inputIma)
-    # get (degree) coordinates for points on the border
-    borderpoints = np.vstack((x[border], y[border])).T
-    # get (degree) coordinates for all points in the image
-    allpoints = np.vstack((x.flatten(), y.flatten())).T
-    # get distace of all points in the image to every border voxel
-    distance = spatial.distance.cdist(allpoints, borderpoints,
-                                      metric='euclidean')
-    # get the distance to the border point that is closest
-    distMin = np.min(distance, axis=1)
-    # put minimum distances in images shape.
-    distIma = distMin.reshape((pix, pix))
-
-    return distIma
-
-
-def assignBorderVals(binMask, distIma, borderRange=0.5):
-    "Assign the new (raised cosine values) to voxels in desired border range."
-
-    # find logical for pixels away less than a certain number from border
-    lgcIma = np.logical_and(np.less_equal(distIma, borderRange), binMask)
-    # get distances for values that fullfill logical
-    distance = distIma[lgcIma]
-    # distance will contain values from 0 to border range
-    scaleFactor = 50 / borderRange
-    # scale distances to fit in the window
-    distance *= scaleFactor
-    # get raised cosine window
-    window = signal.hann(100)[:50]
-    # get new values
-    newvals = np.copy(window[distance.astype('int')])
-    # take the origanal mask, the logical and insert new values
-    binMask = binMask.astype('float')
-    binMask[lgcIma] = np.copy(newvals)
-
-    return binMask
-
-
-# %% stimulus settings
+# %% stimulus settings for the motion-dependent pRF
 fovHeight = 11.
 pix = 1024
 barSize = 1.0
 stepSize = 0.5
+
+# %% create ring wedge masks
 
 # derive the radii for the ring limits
 minRadi = np.arange(0.5, fovHeight/2.-barSize+stepSize, stepSize)
@@ -146,7 +33,8 @@ thetaPairs = zip(minTheta, maxTheta)
 # find all possible combinations between ring and wedge limits
 combis = list(itertools.product(radiPairs, thetaPairs))
 
-# %% create masks for opacity (all or none)
+
+# %% create masks for the background (no raised cosine)
 binMasks = np.empty((pix, pix, len(combis)), dtype='int32')
 for ind, combi in enumerate(combis):
     binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0][0],
@@ -159,27 +47,23 @@ binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
 
 # for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
 # -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
-opaMasks = binMasks*2 - 1
-# ensure that it is int32 type
-opaMasks = opaMasks.astype('int32')
-# save as png images
-np.save("/home/marian/Documents/Testing/CircleBarApertures/opa/opaMasks",
-        opaMasks)
+opaPgDnMasks = binMasks*2-1
+
+# save as npy array
+np.save("/home/marian/Documents/Testing/CircleBarApertures/opa/opaPgDnMasks",
+        opaPgDnMasks.astype('int32'))
+
 # save array as images, if wanted
-for ind in np.arange(opaMasks.shape[-1]):
-    im = Image.fromarray(opaMasks[..., ind].astype(np.uint8)*255)
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/opa/Ima" +
-            "_" + str(ind) + ".png")
-# delete opaMasks to save space
-del(opaMasks)
+for ind in np.arange(opaPgDnMasks.shape[-1]):
+    im = Image.fromarray(opaPgDnMasks[..., ind].astype(np.uint8)*255)
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/opa/" +
+            "opaPgDnMasks_" + str(ind) + ".png")
 
-# %% create masks with raised cosines
+# delete opaPgDnMasks to save space
+del(opaPgDnMasks)
 
-# create masks for contrast
-contrMasks = np.empty((pix, pix, binMasks.shape[-1]), dtype='float32')
-# create booleans for border area where contrast is ramped
-boolMasks = np.empty((pix, pix, binMasks.shape[-1]), dtype='bool')
-
+# %% create masks for the foreground (raised cosine)
+opaPgUpMasks = np.empty((pix, pix, binMasks.shape[-1]), dtype='float32')
 for i in range(binMasks.shape[-1]):
     # get a single mask
     binMask = binMasks[..., i]
@@ -187,31 +71,76 @@ for i in range(binMasks.shape[-1]):
     if np.greater(np.sum(binMask), 0):
         # get its distance image
         distIma = getDistIma(binMask, fovHeight, pix)
-        # get boolean for border are
-        boolMasks[..., i] = np.logical_and(np.less_equal(distIma, 0.25),
-                                           binMask)
         # assign raised cosine values to bixels less than 0.5 away from border
-        contrMasks[..., i] = assignBorderVals(binMask, distIma,
-                                              borderRange=0.25)
+        opaPgUpMasks[..., i] = assignBorderVals(binMask, distIma,
+                                                borderRange=0.25)
     else:
         # assign old contrast mask
-        contrMasks[..., i] = binMask
-        boolMasks[..., i] = binMask
+        opaPgUpMasks[..., i] = binMask
 
-# save contrast mask as numpy array
-np.save("/home/marian/Documents/Testing/CircleBarApertures/contr/contrMasks",
-        contrMasks.astype('float32'))
-# save boolean border mask as numpy array
-np.save("/home/marian/Documents/Testing/CircleBarApertures/bool/boolMasks",
-        boolMasks.astype('bool'))
+# for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
+# -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
+opaPgUpMasks = opaPgUpMasks*2 - 1
 
-# save contrast mask as png images
-for ind in np.arange(contrMasks.shape[-1]):
-    im = Image.fromarray((255*contrMasks[..., ind]).astype(np.uint8))
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/contr/Ima" +
-            "_" + str(ind) + ".png")
-# save bool border mask as png images
-for ind in np.arange(boolMasks.shape[-1]):
-    im = Image.fromarray((255*boolMasks[..., ind]).astype(np.uint8))
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/bool/Ima" +
-            "_" + str(ind) + ".png")
+# save as npy array
+np.save("/home/marian/Documents/Testing/CircleBarApertures/opa/opaPgUpMasks",
+        opaPgUpMasks.astype('float32'))
+
+# save array as images, if wanted
+for ind in np.arange(opaPgUpMasks.shape[-1]):
+    im = Image.fromarray((255*opaPgUpMasks[..., ind]).astype(np.uint8))
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/opa/" +
+            "opaPgUpMasks_" + str(ind) + ".png")
+
+# delete opaPgDnMasks to save space
+del(opaPgUpMasks)
+
+
+## %% stimulus settings for the localiser pRF experiment
+#fovHeight = 24.
+#pix = 1024
+#barSize = 3.0
+#stepSize = 0.5
+#numWedges = 32
+#
+## derive the x positions for the bar stimulus
+#minX = np.arange(0, fovHeight-barSize+stepSize, stepSize)
+#maxX = minX + barSize
+#xpairs = zip(minX, maxX, np.zeros(len(minX)), np.ones(len(minX))*fovHeight)
+#
+## derive the y positions for the wedge limits
+#minY = np.arange(0, fovHeight-barSize+stepSize, stepSize)
+#maxY = minY + barSize
+#ypairs = zip(np.zeros(len(minY)), np.ones(len(minY))*fovHeight, minY, maxY)
+#
+## find all possible combinations between ring and wedge limits
+#barCombis = xpairs + ypairs
+#
+## derive the angles for the wedge stimuli
+#minTheta = np.linspace(0, 360, numWedges, endpoint=False)
+#maxTheta = minTheta + 45
+#thetaPairs = zip(minTheta, maxTheta)
+#
+#wedgeCombis = zip(np.ones(len(minTheta))*0.3,
+#                  np.ones(len(minTheta))*fovHeight/2, minTheta, maxTheta)
+#
+## %% create bar masks
+#barMasks = np.empty((pix, pix, len(barCombis)), dtype='int32')
+#for ind, combi in enumerate(barCombis):
+#    barMasks[..., ind] = createBarMask(size=fovHeight, numPixel=pix,
+#                                       startX=combi[0], stopX=combi[1],
+#                                       startY=combi[2], stopY=combi[3])
+## add frame in the beginning with all zeros
+#barMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
+#                           barMasks), axis=2)
+#
+## %% create wedges
+#wedgeMasks = np.empty((pix, pix, len(wedgeCombis)), dtype='int32')
+#for ind, combi in enumerate(wedgeCombis):
+#    wedgeMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0],
+#                                               rMax=combi[1],
+#                                               thetaMin=combi[2],
+#                                               thetaMax=combi[3])
+## add frame in the beginning with all zeros
+#wedgeMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
+#                             wedgeMasks), axis=2)
