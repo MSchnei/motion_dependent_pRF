@@ -311,24 +311,27 @@ nrOfVols = len(Conditions)
 durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
-#window2 = signal.hann(20)[:20/2.]
-#
-#window = raisedCos(nFrames, T=1, beta=0.3)[:nFrames/2.]
-#tempArray = np.zeros(nFrames)
-#tempArray[nFrames/4.:-nFrames/4.] = 1
-#tempArray[:nFrames/4.] = window
-#tempArray[-nFrames/4.:] = window[::-1]
 
 # define on/off cycle in ms
 lenCyc = 200.
 # derive how much of second that is
 div = 1000/lenCyc
+
 # define array to cycle opacity
-cycOpa = np.hstack((np.ones(nFrames/div), np.zeros(nFrames/div),
-                    np.ones(nFrames/div), np.zeros(nFrames/div),
-                    np.ones(nFrames/div), np.zeros(nFrames))
+cycOpa = np.hstack((signal.hamming(nFrames/div)[:nFrames/(div*2)],
+                    np.ones(nFrames/div),
+                    signal.hamming(2*nFrames/(div*3))[nFrames/(div*3):],
+                    np.zeros(nFrames/(div*3)),
+                    signal.hamming(2*nFrames/(div*3))[:nFrames/(div*3)],
+                    np.ones(nFrames/div),
+                    signal.hamming(2*nFrames/(div*3))[nFrames/(div*3):],
+                    np.zeros(nFrames/(div*3)),
+                    signal.hamming(2*nFrames/(div*3))[:nFrames/(div*3)],
+                    np.ones(nFrames/div),
+                    signal.hamming(nFrames/div)[nFrames/(div*2):],
+                    np.zeros(nFrames-nFrames/div))
                    ).astype('float32')
-cycOpa = np.ones(2*nFrames).astype('float32')
+#cycOpa = np.ones(2*nFrames).astype('float32')
 
 # create clock
 clock = core.Clock()
