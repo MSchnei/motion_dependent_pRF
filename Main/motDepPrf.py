@@ -110,8 +110,8 @@ Conditions = np.array(
      [0, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
 Conditions = Conditions.astype(int)
 
-# get timings for the targets
-targets = np.array([2, 4, 6, 8, 10])
+# get timings for the Targets
+Targets = np.array([2, 4, 6, 8, 10])
 # set expected TR
 ExpectedTR = 2
 
@@ -429,8 +429,8 @@ while clock.getTime() < totalTime:
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
-        if (sum(clock.getTime() >= targets) + sum(clock.getTime() <
-           targets + 0.3) == len(targets)+1):
+        if (sum(clock.getTime() >= Targets) + sum(clock.getTime() <
+           Targets + 0.3) == len(Targets)+1):
             # display target!
             # change color fix dot surround to red
             dotFix.fillColor = [0.5, 0.0, 0.0]

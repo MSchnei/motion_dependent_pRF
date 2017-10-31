@@ -104,15 +104,21 @@ fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
 
 # %%
 """CONDITIONS"""
+str_path_parent_up = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
 
-Conditions = np.array(
-    [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
-     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]]).T
-Conditions = Conditions.astype(int)
-# get timings for the targets
-TargetOnsetinSec = np.array([2, 4, 6, 8, 10])
-# set expected TR
-ExpectedTR = 2
+filename = os.path.join(str_path_parent_up, 'Conditions',
+                        'Conditions_MotLoc_run01.npz')
+npzfile = np.load(filename)
+Conditions = npzfile["Conditions"].astype('int')
+TargetTRs = npzfile["TargetTRs"].astype('bool')
+TargetOnsetinSec = npzfile["TargetOnsetinSec"]
+TargetDuration = npzfile["TargetDuration"]
+ExpectedTR = npzfile["ExpectedTR"]
+Targets = np.arange(0, len(Conditions)*ExpectedTR, ExpectedTR)[TargetTRs]
+Targets = Targets + TargetOnsetinSec
+print('TARGETS: ')
+print Targets
 
 # create array to log key pressed events
 TriggerPressedArray = np.array([])
@@ -124,17 +130,9 @@ barSize = 3
 Positions = np.linspace(0, fieldSizeinDeg-barSize, steps)
 Positions = misc.deg2pix(Positions, moni)
 
-#Conditions
-#TargetOnsetinSec
-#TargetDur
-#ExpectedTR
-#NrOfSteps = 
-#NrOfVols = 
-
-
 logFile.write('Conditions=' + unicode(Conditions) + '\n')
 logFile.write('TargetOnsetinSec=' + unicode(TargetOnsetinSec) + '\n')
-#logFile.write('TargetDur=' + unicode(TargetDur) + '\n')
+logFile.write('TargetDuration=' + unicode(TargetDuration) + '\n')
 
 
 # %%
@@ -145,14 +143,18 @@ dim = 1024
 nFrames = 60
 
 # retrieve the different textures
-npzfile = np.load("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/textures.npz")
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Textures_MotLoc.npz')
+npzfile = np.load(filename)
 npzfile.files
 horiBar = npzfile["horiBar"]
 vertiBar = npzfile["vertiBar"]
 wedge = npzfile["wedge"]
 
 # retrieve the different masks
-npzfile = np.load("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/masks.npz")
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Masks_MotLoc.npz')
+npzfile = np.load(filename)
 npzfile.files
 horiBarMask = npzfile["horiBarMask"]
 vertiBarMask = npzfile["vertiBarMask"]
@@ -340,22 +342,29 @@ while clock.getTime() < totalTime:
     key = Conditions[i, 0]
 
     # static/flicker control
-    if Conditions[i, 1] == 1:
-        grating.pos = (0, Positions[key]),
+    if Conditions[i, 1] == 0:
+        grating.opacity = 0
+
+    # static/flicker control
+    elif Conditions[i, 1] == 1:
+        grating.opacity = 1
+        grating.pos = (0, Positions[key-1]),
         visTexture = horiBar
         grating.mask = horiBarMask
 
     # static/flicker control
     elif Conditions[i, 1] == 2:
-        grating.pos = (Positions[key], 0),
+        grating.opacity = 1
+        grating.pos = (Positions[key-1], 0),
         visTexture = vertiBar
         grating.mask = vertiBarMask
 
     # static/flicker control
     elif Conditions[i, 1] == 3:
+        grating.opacity = 1
         grating.pos = (0, 0),
         visTexture = wedge
-        grating.mask = wedgeMasks[..., key]
+        grating.mask = wedgeMasks[..., key-1]
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
@@ -370,6 +379,20 @@ while clock.getTime() < totalTime:
         grating.tex = visTexture[..., tempIt[int(frame)]]
 
         grating.draw()
+
+        # decide whether to draw target
+        # first time in target interval? reset target counter to 0!
+        if (sum(clock.getTime() >= Targets) + sum(clock.getTime() <
+           Targets + 0.3) == len(Targets)+1):
+            # display target!
+            # change color fix dot surround to red
+            dotFix.fillColor = [0.5, 0.0, 0.0]
+            dotFix.lineColor = [0.5, 0.0, 0.0]
+        else:
+            # dont display target!
+            # keep color fix dot surround yellow
+            dotFix.fillColor = [1.0, 0.0, 0.0]
+            dotFix.lineColor = [1.0, 0.0, 0.0]
 
         # draw fixation point surround
         fixationDotSurround()
