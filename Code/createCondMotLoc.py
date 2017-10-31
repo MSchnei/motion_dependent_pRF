@@ -20,7 +20,7 @@ TargetDuration = 0.3
 NrOfCond = 3
 
 # set number of blank trials
-NrNullTrialStart = 10
+NrNullTrialStart = 1  # 10
 NrNullTrialEnd = 10
 NrNullTrialBetw = 20
 
@@ -89,12 +89,12 @@ str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 filename1 = os.path.join(str_path_parent_up, 'Conditions',
                          'Conditions_MotLoc_run01')
-np.savez(filename1, Conditions1=Conditions1,
+np.savez(filename1, Conditions=Conditions1,
          Targets=Targets, TargetOnsetinSec=TargetOnsetinSec,
          TargetDuration=TargetDuration, ExpectedTR=ExpectedTR)
 
 filename2 = os.path.join(str_path_parent_up, 'Conditions',
                          'Conditions_MotLoc_run02')
-np.savez(filename2, Conditions2=Conditions2,
+np.savez(filename2, Conditions=Conditions2,
          Targets=Targets, TargetOnsetinSec=TargetOnsetinSec,
          TargetDuration=TargetDuration, ExpectedTR=ExpectedTR)

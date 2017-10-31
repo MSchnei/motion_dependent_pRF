@@ -19,7 +19,7 @@ TargetDuration = 0.3
 NrOfCond = 3
 
 # set number of blank trials
-NrNullTrialStart = 12
+NrNullTrialStart = 1  # 12
 NrNullTrialEnd = 12
 NrNullTrialBetw = 12
 
