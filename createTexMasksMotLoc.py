@@ -5,7 +5,6 @@ Script to creature textures and masks for the motion localiser.
 """
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import numpy as np
-import itertools
 from utils import carrierPattern, createBinCircleMask
 
 # %% set parameters
