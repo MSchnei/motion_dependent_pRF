@@ -90,11 +90,11 @@ str_path_parent_up = os.path.abspath(
 filename1 = os.path.join(str_path_parent_up, 'Conditions',
                          'Conditions_MotLoc_run01')
 np.savez(filename1, Conditions=Conditions1,
-         Targets=Targets, TargetOnsetinSec=TargetOnsetinSec,
+         TargetTRs=Targets, TargetOnsetinSec=TargetOnsetinSec,
          TargetDuration=TargetDuration, ExpectedTR=ExpectedTR)
 
 filename2 = os.path.join(str_path_parent_up, 'Conditions',
                          'Conditions_MotLoc_run02')
 np.savez(filename2, Conditions=Conditions2,
-         Targets=Targets, TargetOnsetinSec=TargetOnsetinSec,
+         TargetTRs=Targets, TargetOnsetinSec=TargetOnsetinSec,
          TargetDuration=TargetDuration, ExpectedTR=ExpectedTR)
