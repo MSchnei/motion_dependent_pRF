@@ -8,7 +8,6 @@ Psychopy.
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
-from utils import time2frame
 import numpy as np
 import os
 
@@ -107,8 +106,8 @@ fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
 """CONDITIONS"""
 
 Conditions = np.array(
-    [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
-     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]).T
+    [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]]).T
 Conditions = Conditions.astype(int)
 # get timings for the targets
 TargetOnsetinSec = np.array([2, 4, 6, 8, 10])
@@ -120,9 +119,9 @@ TriggerPressedArray = np.array([])
 TargetPressedArray = np.array([])
 
 # create Positions for the bars
-steps = 48
+steps = 43
 barSize = 3
-Positions = np.linspace(0, fieldSizeinDeg, steps, endpoint=False)
+Positions = np.linspace(0, fieldSizeinDeg-barSize, steps)
 Positions = misc.deg2pix(Positions, moni)
 
 #Conditions
@@ -148,16 +147,17 @@ nFrames = 60
 # retrieve the different textures
 npzfile = np.load("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/textures.npz")
 npzfile.files
-littleSquare = npzfile["littleSquare"]
 horiBar = npzfile["horiBar"]
 vertiBar = npzfile["vertiBar"]
+wedge = npzfile["wedge"]
 
 # retrieve the different masks
 npzfile = np.load("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/masks.npz")
 npzfile.files
-littleSquareMasks = npzfile["littleSquareMasks"]
-horiBarMasks = npzfile["horiBarMasks"]
-vertiBarMasks = npzfile["vertiBarMasks"]
+horiBarMask = npzfile["horiBarMask"]
+vertiBarMask = npzfile["vertiBarMask"]
+wedgeMasks = npzfile["wedgeMasks"]
+
 
 # %%
 """STIMULI"""
@@ -281,6 +281,20 @@ def fixationGrid():
     Line.setOri(135)
     Line.draw()
 
+
+def fixationDotSurround():
+    """draw fixation dot surround"""
+    dotFixSurround.radius = 0.4
+    dotFixSurround.fillColor = [0.0, 0.0, 0.0]
+    dotFixSurround.lineColor = [0.0, 0.0, 0.0]
+    dotFixSurround.draw()
+
+    dotFixSurround.radius = 0.19
+    dotFixSurround.fillColor = [1.0, 1.0, 1.0]
+    dotFixSurround.lineColor = [1.0, 1.0, 1.0]
+    dotFixSurround.draw()
+
+
 # %%
 """TIME AND TIMING PARAMETERS"""
 
@@ -329,29 +343,26 @@ while clock.getTime() < totalTime:
     if Conditions[i, 1] == 1:
         grating.pos = (0, Positions[key]),
         visTexture = horiBar
-        grating.mask = horiBarMasks
+        grating.mask = horiBarMask
 
     # static/flicker control
     elif Conditions[i, 1] == 2:
         grating.pos = (Positions[key], 0),
-#        grating.size = (3, 24),
         visTexture = vertiBar
-        grating.mask = vertiBarMasks
+        grating.mask = vertiBarMask
 
     # static/flicker control
     elif Conditions[i, 1] == 3:
         grating.pos = (0, 0),
-#        grating.size = (24, 24),
-        visTexture = littleSquare
-        grating.mask = littleSquareMasks
-
+        visTexture = wedge
+        grating.mask = wedgeMasks[..., key]
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
         # get interval time
         t = clock.getTime() % ExpectedTR
         # get respective frame
-        frame = time2frame(t, frameRate=nFrames)
+        frame = t*nFrames
         # draw fixation grid (circles and lines)
         fixationGrid()
 
@@ -361,7 +372,8 @@ while clock.getTime() < totalTime:
         grating.draw()
 
         # draw fixation point surround
-        dotFixSurround.draw()
+        fixationDotSurround()
+
         # draw fixation point
         dotFix.draw()
 

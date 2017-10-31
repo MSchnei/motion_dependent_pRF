@@ -10,7 +10,7 @@ import numpy as np
 import os
 from scipy import signal
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
-from utils import (cart2pol, time2frame, raisedCos)
+from utils import cart2pol
 
 # %%
 """ SAVING and LOGGING """
@@ -408,7 +408,7 @@ while clock.getTime() < totalTime:
         # get interval time
         t = clock.getTime() % ExpectedTR
         # get respective frame
-        frame = time2frame(t, frameRate=nFrames)
+        frame = t*nFrames
 
         # draw fixation grid (circles and lines)
         fixationGrid()

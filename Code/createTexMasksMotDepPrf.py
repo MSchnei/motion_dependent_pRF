@@ -15,19 +15,19 @@ from utils import (createBarMask, createBinCircleMask, getDistIma,
 # %% stimulus settings for the motion-dependent pRF
 fovHeight = 11.
 pix = 1024
-barSize = 1.0
-stepSize = 0.5
+barSize = 1.7
+stepSize = 0.34
 
 # %% create ring wedge masks
 
 # derive the radii for the ring limits
-minRadi = np.arange(0.5, fovHeight/2.-barSize+stepSize, stepSize)
+minRadi = np.arange(0.4+stepSize-barSize, fovHeight/2., stepSize)[2:-2]
 maxRadi = minRadi + barSize
 radiPairs = zip(minRadi, maxRadi)
 
 # derive the angles for the wedge limits
-minTheta = np.linspace(0, 360, 8, endpoint=False)
-maxTheta = minTheta + 180
+minTheta = np.linspace(0, 360, 16, endpoint=False)
+maxTheta = minTheta + 45
 thetaPairs = zip(minTheta, maxTheta)
 
 # find all possible combinations between ring and wedge limits
@@ -37,26 +37,58 @@ combis = list(itertools.product(radiPairs, thetaPairs))
 # %% create masks for the background (no raised cosine)
 binMasks = np.empty((pix, pix, len(combis)), dtype='int32')
 for ind, combi in enumerate(combis):
-    binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rMin=combi[0][0],
-                                             rMax=combi[0][1],
+    binMasks[..., ind] = createBinCircleMask(fovHeight, pix, rLow=combi[0][0],
+                                             rUp=combi[0][1],
                                              thetaMin=combi[1][0],
-                                             thetaMax=combi[1][1])
+                                             thetaMax=combi[1][1], rMin=0.4,
+                                             rMax=5.5)
+
+# group apertures together to form bow-tie pattern
+# set how many apertures should be grouped together
+groupSize = 4
+# set the distance between apertures that should be grouped together
+jump = 4
+
+# get an index that can be useed as an index
+jumpInd = np.array([])
+for ind in range(jump):
+    jumpInd = np.hstack((jumpInd,
+                         np.arange(ind, binMasks.shape[-1], groupSize*jump)))
+jumpInd = np.sort(jumpInd)
+
+offset = np.array([[0, 1, 2, 3], [3, 0, 1, 2], [2, 3, 0, 1], [1, 2, 3, 0]])
+
+
+# use index to group aprtures together
+opaPgDnMasks = np.empty((pix, pix, len(jumpInd)), dtype='int32')
+for idx, jumpIdx in enumerate(jumpInd):
+    # get indices
+    indices = np.linspace(jumpIdx, jumpIdx+jump*(groupSize-1), groupSize)
+
+    # add random offset
+    indices = indices + offset[idx % 4, :]
+
+    # use indices to geth relevant apertures
+    lgc = binMasks[..., indices.astype('int')]
+
+    opaPgDnMasks[..., idx] = np.sum(lgc, axis=2).astype('bool')
+
 # add frame in the beginning with all zeros
-binMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
-                           binMasks), axis=2)
+opaPgDnMasks = np.concatenate((np.zeros((pix, pix)).reshape(pix, pix, 1),
+                               opaPgDnMasks), axis=2)
 
 # for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
 # -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
-opaPgDnMasks = binMasks*2-1
+opaPgDnMasks = opaPgDnMasks*2-1
 
 # save as npy array
-np.save("/home/marian/Documents/Testing/CircleBarApertures/opa/opaPgDnMasks",
+np.save("/home/marian/Documents/Testing/CircleBarApertures/test/opaPgDnMasks",
         opaPgDnMasks.astype('int32'))
 
 # save array as images, if wanted
 for ind in np.arange(opaPgDnMasks.shape[-1]):
     im = Image.fromarray(opaPgDnMasks[..., ind].astype(np.uint8)*255)
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/opa/" +
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/test/" +
             "opaPgDnMasks_" + str(ind) + ".png")
 
 # delete opaPgDnMasks to save space
