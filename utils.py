@@ -20,6 +20,18 @@ def pol2cart(r, t):
     return(x, y)
 
 
+def doRotation(x, y, RotRad=0):
+    """Generate a meshgrid and rotate it by RotRad radians."""
+
+    # Clockwise, 2D rotation matrix
+    RotMatrix = np.array([[np.cos(RotRad),  np.sin(RotRad)],
+                          [-np.sin(RotRad), np.cos(RotRad)]])
+
+    rot = np.einsum('ji, mni -> jmn', RotMatrix, np.dstack([x, y]))
+    rot = np.transpose(rot, (1, 2, 0))
+    return rot[..., 0], rot[..., 1]
+
+
 def createBarMask(size=24, numPixel=1024, startX=0, stopX=24, startY=0,
                   stopY=24):
     """Create binary bar mask.
@@ -50,8 +62,8 @@ def createBarMask(size=24, numPixel=1024, startX=0, stopX=24, startY=0,
     return np.logical_and(xcontrs, yconstr)
 
 
-def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
-                        thetaMax=360.):
+def createBinCircleMask(size, numPixel, rLow=0., rUp=500., thetaMin=0.,
+                        thetaMax=360., rMin=0, rMax=np.inf):
 
     """Create binary wedge-and-ring mask.
     Parameters
@@ -60,24 +72,33 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
         Size of the (background) square in deg of vis angle
     numPixel : float
         Number of pixels that should be used for the square
-    rMin : float
-        Minimum radius of the ring apertures in deg of vis angle
-    rMax : float
-        Maximum radius of the ring apertures in deg of vis angle
+    rLow : float
+        Lower radius of the ring apertures in deg of vis angle
+    rUp : float
+        Upper radius of the ring apertures in deg of vis angle
     thetaMin : float
         Minimum angle of the wedge apertures in deg
     thetaMax : bool
         Minimum angle of the wedge apertures in deg
+    thetaMin : float
+        Minimum radius of the ring apertures in deg of vis angle
+    thetaMax : bool
+        Maximum radius of the ring apertures in deg of vis angle
     Returns
     -------
     binMask : bool
         binary wedge-and-ring mask
     """
 
-    # verify that the maximum radius is not bigger than the size
-    if np.greater(rMax, size/2.):
-        rMax = np.copy(size/2.)
-        print "rMax was reset to max stim size."
+    # verify that the upper radius is not bigger than the max radius
+    if np.greater(rUp, rMax):
+        rUp = np.copy(rMax)
+        print "rUp was reset to max stim size."
+
+    # verify that the lower radius is not less than the min radius
+    if np.less(rLow, rMin):
+        rLow = np.copy(rMin)
+        print "rLow was reset to min stim size."
 
     # convert from deg to radius
     thetaMin, thetaMax = np.deg2rad((thetaMin, thetaMax))
@@ -98,8 +119,8 @@ def createBinCircleMask(size, numPixel, rMin=0., rMax=500., thetaMin=0.,
     theta %= (2*np.pi)
 
     # define ringMask
-    ringMask = np.logical_and(np.greater(radius, rMin),
-                              np.less_equal(radius, rMax))
+    ringMask = np.logical_and(np.greater(radius, rLow),
+                              np.less_equal(radius, rUp))
 
     wedgeMask = np.less_equal(theta, thetaMax-thetaMin)
 
