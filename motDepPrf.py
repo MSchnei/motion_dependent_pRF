@@ -96,7 +96,7 @@ myWin = visual.Window(
     blendMode='avg')
 
 # The size of the field.
-fieldSizeinDeg = 10
+fieldSizeinDeg = 11
 fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
 
 logFile.write('fieldSizeinDeg=' + unicode(fieldSizeinDeg) + '\n')
@@ -311,12 +311,10 @@ nrOfVols = len(Conditions)
 durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
-
 # define on/off cycle in ms
 lenCyc = 200.
 # derive how much of second that is
 div = 1000/lenCyc
-
 # define array to cycle opacity
 cycOpa = np.hstack((signal.hamming(nFrames/div)[:nFrames/(div*2)],
                     np.ones(nFrames/div),
