@@ -128,6 +128,48 @@ def createBinCircleMask(size, numPixel, rLow=0., rUp=500., thetaMin=0.,
     return np.logical_and(ringMask, wedgeMask)
 
 
+def carrierPattern(lamb, phase, numSquares, dim):
+    """
+    Draws a pretty pattern stimulus.
+
+    Parameters:
+        lambda
+            Wavelength of the sinusoid
+        phase
+            Phase of the sinusoid
+        numSquares
+            Number of Squares in the image
+
+    The function returns the new image.
+    """
+
+    # 1 square is equivalent to 360 degree input
+    width = numSquares * 360
+    # what matters is the diagonal, so shrink width with sqrt(2)/2
+    width = width * np.sqrt(2)/2
+
+    # get meshgrid of X and Y coordinates
+    X, Y = np.meshgrid(np.linspace(-width/2, width/2, dim),
+                       np.linspace(-width/2, width/2, dim))
+    # rotate by 45 degress
+    X, Y = doRotation(X, Y, RotRad=np.pi/4.)
+    # set X[0, 0] to 270, since np.sin(270) = -1
+    if np.greater_equal(X[0, 0], 0):
+        X = X + X[0, 0] + 270
+    else:
+        X = X - X[0, 0] + 270
+    # set Y[0, 0] to 0, since np.cos(0) = 1
+    if np.greater_equal(Y[0, 0], 0):
+        Y = Y + Y[0, 0]
+    else:
+        Y = Y - Y[0, 0]
+    # Luminance modulation at each pixel
+    nom = np.sin(((np.pi*X)/180.)) + np.cos(((np.pi*Y)/180.))
+    img = (np.cos(2*np.pi*nom / lamb + phase))
+
+    return img
+
+
 def getDistIma(inputIma, fovHeight=10, pix=512):
     # create meshgrid
     x, y = np.meshgrid(np.linspace(-fovHeight/2., fovHeight/2., pix),
