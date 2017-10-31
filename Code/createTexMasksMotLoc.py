@@ -4,6 +4,7 @@
 Script to creature textures and masks for the motion localiser.
 """
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
+import os
 import numpy as np
 from utils import carrierPattern, createBinCircleMask
 
@@ -98,13 +99,18 @@ for ind, combi in enumerate(combis):
                                                thetaMax=combi[3],
                                                rMin=minR)
 wedgeMasks = wedgeMasks*2-1
+
 # %%  save textures (for the wedge)
-outfile = ("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/"
-           + "textures")
-np.savez(outfile, horiBar=horiBar, vertiBar=vertiBar, wedge=wedgeTexture)
+str_path_parent_up = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
+
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Textures_MotLoc')
+
+np.savez(filename, horiBar=horiBar, vertiBar=vertiBar, wedge=wedgeTexture)
 
 # %% save masks (for the wedge)
-outfile = ("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/"
-           + "masks")
-np.savez(outfile, horiBarMask=horiBarMask, vertiBarMask=vertiBarMask,
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Masks_MotLoc')
+np.savez(filename, horiBarMask=horiBarMask, vertiBarMask=vertiBarMask,
          wedgeMasks=wedgeMasks)
