@@ -10,13 +10,70 @@ import itertools
 import os
 import numpy as np
 from PIL import Image
-from utils import createBinCircleMask, getDistIma, assignBorderVals
+from utils import createBinCircleMask, getDistIma, assignBorderVals, cart2pol
 
 # %% stimulus settings for the motion-dependent pRF
 fovHeight = 11.
 pix = 1024
 barSize = 1.7
 stepSize = 0.34
+
+# define the spatial frequency of the radial sine wave grating
+spatFreq = 2
+angularCycles = 32
+fieldSizeinDeg = 11
+
+# define the texture
+nFrames = 60
+cycPerSec = 2.5
+
+# %% create the radial sine wave pattern
+
+# get cartesian coordinates which are needed to define the textures
+x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., pix),
+                   np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., pix))
+
+# get polar coordinates which are needed to define the textures
+theta, radius = cart2pol(x, y)
+# define the phase for inward/outward conditin
+phase = np.linspace(0., 2.*np.pi, nFrames/cycPerSec)
+
+# get the array that divides field in angular cycles
+polCycles = np.sin(angularCycles*theta)
+polCycles[np.greater_equal(polCycles, 0)] = 1
+polCycles[np.less(polCycles, 0)] = -1
+
+# get radial sine wave gratings for main conditions
+stimTexture = np.zeros((pix, pix, nFrames/cycPerSec))
+for ind, ph in enumerate(phase):
+    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - ph)
+    stimTexture[..., ind] = ima
+
+# get radial sine wave gratings for control condition
+ctrlTexture = np.zeros((pix, pix, 2))
+ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
+ima = ima * polCycles
+ctrlTexture[..., 0] = np.copy(ima)
+ctrlTexture[..., 1] = np.copy(ima) * -1
+
+# binarize
+stimTexture[np.greater_equal(stimTexture, 0)] = 1
+stimTexture[np.less(stimTexture, 0)] = -1
+stimTexture = stimTexture.astype('int8')
+
+ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
+ctrlTexture[np.less(ctrlTexture, 0)] = -1
+ctrlTexture = ctrlTexture.astype('int8')
+
+
+# %%  save textures (for the wedge)
+str_path_parent_up = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
+
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Textures_MotDepPrf')
+
+np.savez(filename, stimTexture=stimTexture, ctrlTexture=ctrlTexture)
 
 # %% create ring wedge masks
 
@@ -135,7 +192,7 @@ str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
-                        'Textures_MotDepPrf')
+                        'Masks_MotDepPrf')
 
 np.savez(filename, opaPgDnMasks=opaPgDnMasks, opaPgUpMasks=opaPgUpMasks)
 
