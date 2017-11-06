@@ -51,7 +51,6 @@ ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
 ctrlTexture[np.less(ctrlTexture, 0)] = -1
 ctrlTexture = ctrlTexture.astype('int8')
 
-
 # %%  save textures (for the wedge)
 str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -64,7 +63,7 @@ np.savez(filename, stimTexture=stimTexture, ctrlTexture=ctrlTexture)
 # %% create ring wedge masks
 
 # derive the radii for the ring limits
-minRadi = np.arange(0.4+cfg.stepSize-cfg.barSize, cfg.fovHeight/2.,
+minRadi = np.arange(cfg.minR+cfg.stepSize-cfg.barSize, cfg.fovHeight/2.,
                     cfg.stepSize)[2:-2]
 maxRadi = minRadi + cfg.barSize
 radiPairs = zip(minRadi, maxRadi)
@@ -86,8 +85,9 @@ for ind, combi in enumerate(combis):
                                              rLow=combi[0][0],
                                              rUp=combi[0][1],
                                              thetaMin=combi[1][0],
-                                             thetaMax=combi[1][1], rMin=0.4,
-                                             rMax=5.5)
+                                             thetaMax=combi[1][1],
+                                             rMin=cfg.minR,
+                                             rMax=cfg.fovHeight/2.)
 
 # %% group masks for the background together (no raised cosine)
 
@@ -125,55 +125,30 @@ opaPgDnMasks = np.concatenate((
     np.zeros((cfg.pix, cfg.pix)).reshape(cfg.pix, cfg.pix, 1),
     opaPgDnMasks), axis=2)
 
-# for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
-# -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
-opaPgDnMasks = opaPgDnMasks*2-1
-
 # save array as images, if wanted
 for ind in np.arange(opaPgDnMasks.shape[-1]):
     im = Image.fromarray(opaPgDnMasks[..., ind].astype(np.uint8)*255)
     im.save("/home/marian/Documents/Testing/CircleBarApertures/test/" +
             "opaPgDnMasks_" + str(ind) + ".png")
 
-# %% create masks for the foreground (raised cosine)
-binMasksRaised = np.empty((cfg.pix, cfg.pix, binMasks.shape[-1]),
-                          dtype='float32')
-for i in range(binMasks.shape[-1]):
+# %% create masks for the foreground (raised cosine) and group masks for the
+# foreground together (raised cosine)
+
+opaPgUpMasks = np.empty((cfg.pix, cfg.pix, opaPgDnMasks.shape[-1]),
+                        dtype='float32')
+for i in range(opaPgDnMasks.shape[-1]):
     # get a single mask
-    binMask = binMasks[..., i]
-    # check whether there is at least 1 non zero element
-    if np.greater(np.sum(binMask), 0):
+    binMask = opaPgDnMasks[..., i]
+    # check whether there is at least one element of 1
+    if np.any(binMask == 1):
         # get its distance image
         distIma = getDistIma(binMask, cfg.fovHeight, cfg.pix)
         # assign raised cosine values to bixels less than 0.5 away from border
-        binMasksRaised[..., i] = assignBorderVals(binMask, distIma,
-                                                  borderRange=0.25)
+        opaPgUpMasks[..., i] = assignBorderVals(binMask, distIma,
+                                                borderRange=0.3)
     else:
         # assign old contrast mask
-        binMasksRaised[..., i] = binMask
-
-# %% group masks for the foreground together (raised cosine)
-
-# use index to group apertures together
-opaPgUpMasks = np.empty((cfg.pix, cfg.pix, len(combis)/numAprtCrcle*n),
-                        dtype='float32')
-for ind1, jumpIdx in enumerate(jumpInd):
-    for ind2, lgc in enumerate(success):
-        # get the right indices
-        indices = jumpIdx[lgc]
-        # use indices to get relevant apertures
-        lgc = binMasksRaised[..., indices.astype('int')]
-        opaPgUpMasks[..., ind1*n+ind2] = np.sum(lgc, axis=2)
-
-# add frame in the beginning with all zeros
-opaPgUpMasks = np.concatenate((
-    np.zeros((cfg.pix, cfg.pix)).reshape(cfg.pix, cfg.pix, 1),
-    opaPgUpMasks), axis=2)
-
-
-# for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
-# -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
-opaPgUpMasks = opaPgUpMasks*2 - 1
+        opaPgUpMasks[..., i] = binMask
 
 # save array as images, if wanted
 for ind in np.arange(opaPgUpMasks.shape[-1]):
@@ -193,6 +168,11 @@ ouwardInd = np.hstack((0, ouwardInd))
 opaPgDnMasks = opaPgDnMasks[..., ouwardInd]
 opaPgUpMasks = opaPgUpMasks[..., ouwardInd]
 
+# for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
+# -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
+opaPgDnMasks = opaPgDnMasks*2 - 1
+opaPgUpMasks = opaPgUpMasks*2 - 1
+
 # save
 str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
@@ -201,53 +181,3 @@ filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotDepPrf')
 
 np.savez(filename, opaPgDnMasks=opaPgDnMasks, opaPgUpMasks=opaPgUpMasks)
-
-
-# %% older work
-## group apertures together to form bow-tie pattern
-## set how many apertures should be grouped together
-#groupSize = 4
-## set the distance between apertures that should be grouped together
-#jump = 4
-#
-## get an index that can be useed as an index
-#jumpInd = np.array([])
-#for ind in range(jump):
-#    jumpInd = np.hstack((jumpInd,
-#                         np.arange(ind, binMasks.shape[-1], groupSize*jump)))
-#jumpInd = np.sort(jumpInd)
-#
-#offset = np.array([[0, 1, 2, 3], [3, 0, 1, 2], [2, 3, 0, 1], [1, 2, 3, 0]])
-#
-#
-## use index to group aprtures together
-#opaPgDnMasks = np.empty((cfg.pix, cfg.pix, len(jumpInd)), dtype='int32')
-#for idx, jumpIdx in enumerate(jumpInd):
-#    # get indices
-#    indices = np.linspace(jumpIdx, jumpIdx+jump*(groupSize-1), groupSize)
-#
-#    # add random offset
-#    indices = indices + offset[idx % 4, :]
-#
-#    # use indices to geth relevant apertures
-#    lgc = binMasks[..., indices.astype('int')]
-#
-#    opaPgDnMasks[..., idx] = np.sum(lgc, axis=2).astype('bool')
-#
-## add frame in the beginning with all zeros
-#opaPgDnMasks = np.concatenate((np.zeros((cfg.pix, cfg.pix)).reshape(cfg.pix, cfg.pix, 1),
-#                               opaPgDnMasks), axis=2)
-#
-## for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
-## -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
-#opaPgDnMasks = opaPgDnMasks*2-1
-#
-## save as npy array
-#np.save("/home/marian/Documents/Testing/CircleBarApertures/test/opaPgDnMasks",
-#        opaPgDnMasks.astype('int32'))
-#
-## save array as images, if wanted
-#for ind in np.arange(opaPgDnMasks.shape[-1]):
-#    im = Image.fromarray(opaPgDnMasks[..., ind].astype(np.uint8)*255)
-#    im.save("/home/marian/Documents/Testing/CircleBarApertures/test/" +
-#            "opaPgDnMasks_" + str(ind) + ".png")

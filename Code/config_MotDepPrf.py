@@ -9,6 +9,8 @@ nFrames = 60.
 fovHeight = 11.
 # number of pixels for the entire filed of view
 pix = 1024.
+# set the minimum radius fo the ring/wedge
+minR = 0.4
 # size of the bar aperture in deg of vis angle
 barSize = 1.7
 # by how much will the aperture step through visual field? in deg of vis angle

@@ -96,18 +96,19 @@ myWin = visual.Window(
     blendMode='avg')
 
 # The size of the field.
-fieldSizeinDeg = 11
-fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
+fieldSizeinPix = np.round(misc.deg2pix(cfg.fovHeight, moni))
 
-logFile.write('fieldSizeinDeg=' + unicode(fieldSizeinDeg) + '\n')
+logFile.write('fieldSizeinDeg=' + unicode(cfg.fovHeight) + '\n')
 logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 
 # %%
 """DURATIONS"""
 # get timings for apertures and motion directions
 Conditions = np.array(
-    [[0, 11, 22, 33, 44, 55, 2, 4, 9, 40, 12, 24, 31, 45, 50, 43, 6, 12, 41],
-     [0, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
+    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 21, 22, 23, 24, 25, 26, 0, 0, 40, 41, 42,
+      43, 44, 45, 0, 0, 46, 47, 48, 49, 50, 51],
+     [0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
+      0, 0, 3, 3, 3, 3, 3, 3]]).T
 Conditions = Conditions.astype(int)
 
 # get timings for the Targets
@@ -286,7 +287,7 @@ lenCyc = 200.
 # derive how much of second that is
 div = 1000/lenCyc
 # define array to cycle opacity
-cycOpa = np.hstack(
+cycAlt = np.hstack(
     (signal.hamming(cfg.nFrames/div)[:cfg.nFrames/(div*2)],
      np.ones(cfg.nFrames/div),
      signal.hamming(2*cfg.nFrames/(div*3))[cfg.nFrames/(div*3):],
@@ -299,7 +300,14 @@ cycOpa = np.hstack(
      np.ones(cfg.nFrames/div),
      signal.hamming(cfg.nFrames/div)[cfg.nFrames/(div*2):],
      np.zeros(cfg.nFrames-cfg.nFrames/div))).astype('float32')
-# cycOpa = np.ones(2*cfg.nFrames).astype('float32')
+cycAlt = np.hstack((np.ones(cfg.nFrames/div),
+                    np.zeros(cfg.nFrames/div),
+                    np.ones(cfg.nFrames/div),
+                    np.zeros(cfg.nFrames/div),
+                    np.ones(cfg.nFrames/div),
+                    np.zeros(cfg.nFrames)))
+cycOpaque = np.ones(2*cfg.nFrames).astype('float32')
+cycTransp = np.zeros(2*cfg.nFrames).astype('float32')
 
 # create clock
 clock = core.Clock()
@@ -354,26 +362,48 @@ while clock.getTime() < totalTime:
 
     # set the background mask to opaPgDnMask
     radSqrWaveBckgr.mask = opaPgDnMask
+#    radSqrWaveBckgr.mask = np.ones((cfg.pix, cfg.pix))*-1
+
+    # blank
+    if Conditions[i, 1] == 0:
+        visOpa = cycTransp
+        tempIt = np.tile(
+            np.repeat(np.array([0, 0]), cfg.nFrames/(cfg.cycPerSec*2)),
+            cfg.cycPerSec*2).astype('int32')
+        visTexture = ctrlTexture
 
     # static/flicker control
-    if Conditions[i, 1] == 0:
+    elif Conditions[i, 1] == 1:
+        visOpa = cycAlt
         tempIt = np.tile(
             np.repeat(np.array([0, 1]), cfg.nFrames/(cfg.cycPerSec*2)),
             cfg.cycPerSec*2).astype('int32')
         visTexture = ctrlTexture
 
     # contracting motion
-    elif Conditions[i, 1] == 1:
+    elif Conditions[i, 1] == 2:
+        visOpa = cycAlt
         tempIt = np.tile(
             np.arange(cfg.nFrames/cfg.cycPerSec),
             cfg.cycPerSec*2).astype('int32')[::-1]
         visTexture = stimTexture
 
     # expanding motion
-    elif Conditions[i, 1] == 2:
+    elif Conditions[i, 1] == 3:
+        visOpa = cycAlt
         tempIt = np.tile(
             np.arange(cfg.nFrames/cfg.cycPerSec),
             cfg.cycPerSec*2).astype('int32')
+
+        test = [visOpa < 1][0]
+        test = np.diff(test)
+        test = np.where(test)[0]
+        whatsInserted = np.tile(tempIt[test[0]], test[1]-test[0])%24
+        tempIt = np.insert(tempIt, test[0], whatsInserted)
+        whatsInserted = (np.tile(tempIt[test[2]], test[3]-test[2]) + len(whatsInserted)) %24
+        tempIt = np.insert(tempIt, test[2], whatsInserted)
+        tempIt = tempIt[:cfg.nFrames*2]
+
         visTexture = stimTexture
 
     while clock.getTime() < np.sum(durations[0:i+1]):
@@ -386,14 +416,14 @@ while clock.getTime() < totalTime:
         fixationGrid()
 
         # set opacity of background aperture
-        radSqrWaveBckgr.opacity = cycOpa[int(frame)]
+        radSqrWaveBckgr.opacity = visOpa[int(frame)]
         # draw the background aperture
         radSqrWaveBckgr.draw()
 
         # set the foreground aperture
         radSqrWave.tex = visTexture[..., tempIt[int(frame)]]
         # set opacity of foreground aperture
-        radSqrWave.opacity = cycOpa[int(frame)]
+        radSqrWave.opacity = visOpa[int(frame)]
         # set foreground mask to opaPgDnMask
         radSqrWave.mask = opaPgUpMask
         # draw the foreground aperture
