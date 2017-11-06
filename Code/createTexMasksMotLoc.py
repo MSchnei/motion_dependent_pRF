@@ -15,7 +15,7 @@ fovHeight = 24.
 # set the number of frames
 nFrames = 60.
 # set the dimension (numbe rof pixels for the carrier pattern)
-dim = 1024
+pix = 1024
 
 # set the phase of the carrier pattern
 phase = np.linspace(0., 4.*np.pi, nFrames)
@@ -36,11 +36,11 @@ wedgeWidth = 45
 minR = 0.4
 
 # %% create the carrier pattern (for the bars)
-barTexture = np.zeros((dim, dim, nFrames))
+barTexture = np.zeros((pix, pix, nFrames))
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
-    ima = carrierPattern(d, t, numSquaresBars, dim)
+    ima = carrierPattern(d, t, numSquaresBars, pix)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
     ima[np.less_equal(ima, 0)] = -1
@@ -57,25 +57,25 @@ for ind in np.arange(barTexture.shape[2]):
 horiBar = np.zeros((barTexture.shape))
 vertiBar = np.zeros((barTexture.shape))
 
-horiBar[0:dim/numSquaresBars, :, :] = np.copy(
-    barTexture[0:dim/numSquaresBars, :, :])
-vertiBar[:, 0:dim/numSquaresBars, :] = np.copy(
-    barTexture[:, 0:dim/numSquaresBars, :])
+horiBar[0:pix/numSquaresBars, :, :] = np.copy(
+    barTexture[0:pix/numSquaresBars, :, :])
+vertiBar[:, 0:pix/numSquaresBars, :] = np.copy(
+    barTexture[:, 0:pix/numSquaresBars, :])
 
 # %% create masks (for the bars)
 horiBarMask = np.zeros((barTexture.shape[:2]))
 vertiBarMask = np.zeros((barTexture.shape[:2]))
-horiBarMask[0:dim/numSquaresBars, :] = 1
+horiBarMask[0:pix/numSquaresBars, :] = 1
 horiBarMask = horiBarMask * 2 - 1
-vertiBarMask[:, 0:dim/numSquaresBars] = 1
+vertiBarMask[:, 0:pix/numSquaresBars] = 1
 vertiBarMask = vertiBarMask * 2 - 1
 
 # %% create the carrier pattern (for the wedge)
-wedgeTexture = np.zeros((dim, dim, nFrames))
+wedgeTexture = np.zeros((pix, pix, nFrames))
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
-    ima = carrierPattern(d, t, numSquaresWedge, dim)
+    ima = carrierPattern(d, t, numSquaresWedge, pix)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
     ima[np.less_equal(ima, 0)] = -1
@@ -90,9 +90,9 @@ maxTheta = minTheta + wedgeWidth
 combis = zip(np.zeros(len(minTheta)), np.ones(len(minTheta))*fovHeight/2.,
              minTheta, maxTheta)
 # create the wedgeMasks
-wedgeMasks = np.empty((dim, dim, len(combis)), dtype='int32')
+wedgeMasks = np.empty((pix, pix, len(combis)), dtype='int32')
 for ind, combi in enumerate(combis):
-    wedgeMasks[..., ind] = createBinCircleMask(fovHeight, dim,
+    wedgeMasks[..., ind] = createBinCircleMask(fovHeight, pix,
                                                rLow=combi[0],
                                                rUp=combi[1],
                                                thetaMin=combi[2],
