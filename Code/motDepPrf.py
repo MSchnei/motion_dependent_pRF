@@ -8,9 +8,9 @@ Created on Tue Oct 24 16:46:04 2017
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import numpy as np
 import os
+import config_MotDepPrf as cfg
 from scipy import signal
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
-from utils import cart2pol
 
 # %%
 """ SAVING and LOGGING """
@@ -106,7 +106,7 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 """DURATIONS"""
 # get timings for apertures and motion directions
 Conditions = np.array(
-    [[0, 11, 22, 33, 44, 55, 63, 4, 9, 40, 12, 24, 31, 45, 50, 64, 6, 12, 41],
+    [[0, 11, 22, 33, 44, 55, 2, 4, 9, 40, 12, 24, 31, 45, 50, 43, 6, 12, 41],
      [0, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]]).T
 Conditions = Conditions.astype(int)
 
@@ -122,63 +122,33 @@ TargetPressedArray = np.array([])
 # %%
 """TEXTURE AND MASKS"""
 
-# define the texture
-dim = 1024
-nFrames = 60
-cycPerSec = 2.5
+# retrieve the different textures
+str_path_parent_up = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
 
-# get cartesian coordinates which are needed to define the textures
-x, y = np.meshgrid(np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim),
-                   np.linspace(-fieldSizeinDeg/2., fieldSizeinDeg/2., dim))
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Textures_MotDepPrf.npz')
+npzfile = np.load(filename)
 
-# get polar coordinates which are needed to define the textures
-theta, radius = cart2pol(x, y)
-# define the phase for inward/outward conditin
-phase = np.linspace(0., 2.*np.pi, nFrames/cycPerSec)
-# define the spatial frequency of the radial sine wave grating
-spatFreq = 2
-angularCycles = 32
-
-# get the array that divides field in angular cycles
-polCycles = np.sin(angularCycles*theta)
-polCycles[np.greater_equal(polCycles, 0)] = 1
-polCycles[np.less(polCycles, 0)] = -1
-
-# get radial sine wave gratings for main conditions
-stimTexture = np.zeros((dim, dim, nFrames/cycPerSec))
-for ind, ph in enumerate(phase):
-    ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius - ph)
-    stimTexture[..., ind] = ima
-
-# get radial sine wave gratings for control condition
-ctrlTexture = np.zeros((dim, dim, 2))
-ima = np.sin((fieldSizeinDeg/2.) * spatFreq * radius)
-ima = ima * polCycles
-ctrlTexture[..., 0] = np.copy(ima)
-ctrlTexture[..., 1] = np.copy(ima) * -1
-
-# binarize
-stimTexture[np.greater_equal(stimTexture, 0)] = 1
-stimTexture[np.less(stimTexture, 0)] = -1
-stimTexture = stimTexture.astype('int8')
-
-ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
-ctrlTexture[np.less(ctrlTexture, 0)] = -1
-ctrlTexture = ctrlTexture.astype('int8')
+stimTexture = npzfile["stimTexture"].astype('int8')
+ctrlTexture = npzfile["ctrlTexture"].astype('int8')
 
 # retrieve the different masks
-opaPgDnMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                       "opa/opaPgDnMasks.npy").astype('int32')
-opaPgUpMasks = np.load("/home/marian/Documents/Testing/CircleBarApertures/" +
-                       "opa/opaPgUpMasks.npy").astype('float32')
-midGreyTexture = np.zeros((dim, dim))
+filename = os.path.join(str_path_parent_up, 'MaskTextures',
+                        'Masks_MotDepPrf.npz')
+npzfile = np.load(filename)
+
+opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int32')
+opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
+
+midGreyTexture = np.zeros((cfg.pix, cfg.pix))
 
 # %%
 """STIMULI"""
 # main stimulus
 radSqrWave = visual.GratingStim(
     myWin,
-    tex=np.zeros((dim, dim)),
+    tex=np.zeros((cfg.pix, cfg.pix)),
     mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
@@ -199,7 +169,7 @@ radSqrWave = visual.GratingStim(
 
 radSqrWaveBckgr = visual.GratingStim(
     myWin,
-    tex=np.zeros((dim, dim)),
+    tex=np.zeros((cfg.pix, cfg.pix)),
     mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
@@ -300,7 +270,7 @@ refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
 if refr_rate is not None:
     frameDur = 1.0/round(refr_rate)
 else:
-    frameDur = 1.0/nFrames  # couldn't get a reliable measure so guess
+    frameDur = 1.0/cfg.nFrames  # couldn't get a reliable measure so guess
 print "refr_rate:"
 print refr_rate
 logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
@@ -316,20 +286,20 @@ lenCyc = 200.
 # derive how much of second that is
 div = 1000/lenCyc
 # define array to cycle opacity
-cycOpa = np.hstack((signal.hamming(nFrames/div)[:nFrames/(div*2)],
-                    np.ones(nFrames/div),
-                    signal.hamming(2*nFrames/(div*3))[nFrames/(div*3):],
-                    np.zeros(nFrames/(div*3)),
-                    signal.hamming(2*nFrames/(div*3))[:nFrames/(div*3)],
-                    np.ones(nFrames/div),
-                    signal.hamming(2*nFrames/(div*3))[nFrames/(div*3):],
-                    np.zeros(nFrames/(div*3)),
-                    signal.hamming(2*nFrames/(div*3))[:nFrames/(div*3)],
-                    np.ones(nFrames/div),
-                    signal.hamming(nFrames/div)[nFrames/(div*2):],
-                    np.zeros(nFrames-nFrames/div))
-                   ).astype('float32')
-#cycOpa = np.ones(2*nFrames).astype('float32')
+cycOpa = np.hstack(
+    (signal.hamming(cfg.nFrames/div)[:cfg.nFrames/(div*2)],
+     np.ones(cfg.nFrames/div),
+     signal.hamming(2*cfg.nFrames/(div*3))[cfg.nFrames/(div*3):],
+     np.zeros(cfg.nFrames/(div*3)),
+     signal.hamming(2*cfg.nFrames/(div*3))[:cfg.nFrames/(div*3)],
+     np.ones(cfg.nFrames/div),
+     signal.hamming(2*cfg.nFrames/(div*3))[cfg.nFrames/(div*3):],
+     np.zeros(cfg.nFrames/(div*3)),
+     signal.hamming(2*cfg.nFrames/(div*3))[:cfg.nFrames/(div*3)],
+     np.ones(cfg.nFrames/div),
+     signal.hamming(cfg.nFrames/div)[cfg.nFrames/(div*2):],
+     np.zeros(cfg.nFrames-cfg.nFrames/div))).astype('float32')
+# cycOpa = np.ones(2*cfg.nFrames).astype('float32')
 
 # create clock
 clock = core.Clock()
@@ -388,27 +358,29 @@ while clock.getTime() < totalTime:
     # static/flicker control
     if Conditions[i, 1] == 0:
         tempIt = np.tile(
-            np.repeat(np.array([0, 1]), nFrames/(cycPerSec*2)),
-            cycPerSec*2).astype('int32')
+            np.repeat(np.array([0, 1]), cfg.nFrames/(cfg.cycPerSec*2)),
+            cfg.cycPerSec*2).astype('int32')
         visTexture = ctrlTexture
 
     # contracting motion
     elif Conditions[i, 1] == 1:
         tempIt = np.tile(
-            np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')[::-1]
+            np.arange(cfg.nFrames/cfg.cycPerSec),
+            cfg.cycPerSec*2).astype('int32')[::-1]
         visTexture = stimTexture
 
     # expanding motion
     elif Conditions[i, 1] == 2:
         tempIt = np.tile(
-            np.arange(nFrames/cycPerSec), cycPerSec*2).astype('int32')
+            np.arange(cfg.nFrames/cfg.cycPerSec),
+            cfg.cycPerSec*2).astype('int32')
         visTexture = stimTexture
 
     while clock.getTime() < np.sum(durations[0:i+1]):
         # get interval time
         t = clock.getTime() % ExpectedTR
         # get respective frame
-        frame = t*nFrames
+        frame = t*cfg.nFrames
 
         # draw fixation grid (circles and lines)
         fixationGrid()

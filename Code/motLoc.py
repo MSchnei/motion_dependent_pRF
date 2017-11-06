@@ -7,9 +7,10 @@ Psychopy.
 """
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
+import os
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
-import os
+import config_MotDepPrf as cfg
 
 # %%
 """ SAVING and LOGGING """
@@ -99,8 +100,8 @@ myWin = visual.Window(
     blendMode='avg')
 
 # The size of the field.
-fieldSizeinDeg = 24
-fieldSizeinPix = np.round(misc.deg2pix(fieldSizeinDeg, moni))
+cfg.fovHeight = 24
+fieldSizeinPix = np.round(misc.deg2pix(cfg.fovHeight, moni))
 
 # %%
 """CONDITIONS"""
@@ -125,9 +126,9 @@ TriggerPressedArray = np.array([])
 TargetPressedArray = np.array([])
 
 # create Positions for the bars
-steps = 43
-barSize = 3
-Positions = np.linspace(0, fieldSizeinDeg-barSize, steps)
+cfg.barSteps = 43
+cfg.barSize = 3
+Positions = np.linspace(0, cfg.fovHeight-cfg.barSize, cfg.barSteps)
 Positions = misc.deg2pix(Positions, moni)
 
 logFile.write('Conditions=' + unicode(Conditions) + '\n')
@@ -139,8 +140,8 @@ logFile.write('TargetDuration=' + unicode(TargetDuration) + '\n')
 """TEXTURE AND MASKS"""
 
 # define the texture
-dim = 1024
-nFrames = 60
+cfg.pix = 1024
+cfg.nFrames = 60
 
 # retrieve the different textures
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
@@ -167,7 +168,7 @@ wedgeMasks = npzfile["wedgeMasks"]
 # INITIALISE SOME STIMULI
 grating = visual.GratingStim(
     myWin,
-    tex=np.zeros((dim, dim)),
+    tex=np.zeros((cfg.pix, cfg.pix)),
     mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
@@ -314,7 +315,7 @@ nrOfVols = len(Conditions)
 durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
-tempIt = np.tile(np.arange(nFrames), 2).astype('int32')
+tempIt = np.tile(np.arange(cfg.nFrames), 2).astype('int32')
 
 # create clock and Landolt clock
 clock = core.Clock()
@@ -343,6 +344,7 @@ while clock.getTime() < totalTime:
 
     # static/flicker control
     if Conditions[i, 1] == 0:
+        visTexture = wedge
         grating.opacity = 0
 
     # static/flicker control
@@ -371,7 +373,7 @@ while clock.getTime() < totalTime:
         # get interval time
         t = clock.getTime() % ExpectedTR
         # get respective frame
-        frame = t*nFrames
+        frame = t*cfg.nFrames
         # draw fixation grid (circles and lines)
         fixationGrid()
 
