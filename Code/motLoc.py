@@ -10,12 +10,13 @@ from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import os
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
-import config_MotDepPrf as cfg
+import config_MotLoc as cfg
 
-# %%
-""" SAVING and LOGGING """
+
+# %% SAVING and LOGGING
+
 # Store info about experiment and experimental run
-expName = 'pRF_mapping_log'  # set experiment name here
+expName = 'motDepPrf'  # set experiment name here
 expInfo = {
     u'participant': u'pilot',
     u'run': u'01',
@@ -37,28 +38,25 @@ os.chdir(str_path_parent_up)
 
 # Name and create specific subject folder
 subjFolderName = str_path_parent_up + os.path.sep + \
-    'Log_%s' % (expInfo['participant'])
+    '%s_SubjData' % (expInfo['participant'])
 if not os.path.isdir(subjFolderName):
     os.makedirs(subjFolderName)
-
 # Name and create data folder for the experiment
 dataFolderName = subjFolderName + os.path.sep + '%s' % (expInfo['expName'])
 if not os.path.isdir(dataFolderName):
     os.makedirs(dataFolderName)
-
 # Name and create specific folder for logging results
 logFolderName = dataFolderName + os.path.sep + 'Logging'
 if not os.path.isdir(logFolderName):
     os.makedirs(logFolderName)
-logFileName = logFolderName + os.path.sep + '%s_%s_Run_%s_%s' % (
+logFileName = logFolderName + os.path.sep + '%s_%s_Run%s_%s' % (
     expInfo['participant'], expInfo['expName'],
     expInfo['run'], expInfo['date'])
-
 # Name and create specific folder for pickle output
 outFolderName = dataFolderName + os.path.sep + 'Output'
 if not os.path.isdir(outFolderName):
     os.makedirs(outFolderName)
-outFileName = outFolderName + os.path.sep + '%s_%s_Run_%s_%s' % (
+outFileName = outFolderName + os.path.sep + '%s_%s_Run%s_%s' % (
     expInfo['participant'], expInfo['expName'],
     expInfo['run'], expInfo['date'])
 
@@ -67,8 +65,8 @@ logFile = logging.LogFile(logFileName+'.log', level=logging.INFO)
 logging.console.setLevel(logging.WARNING)  # set console to receive warnings
 
 
-#  %%
-"""MONITOR AND WINDOW"""
+# %% MONITOR AND WINDOW
+
 # set monitor information:
 distanceMon = 29.5  # [99 for Nova coil]
 widthMon = 35  # [30 for Nova coil]
@@ -85,14 +83,13 @@ logFile.write('PixelWidth=' + unicode(PixW) + '\n')
 logFile.write('PixelHeight=' + unicode(PixH) + '\n')
 
 # set screen:
-# for psychoph lab: make 'fullscr = True', set size =(1920, 1080)
 myWin = visual.Window(
     size=(PixW, PixH),
     screen=0,
-    winType='pyglet',  # winType : None, ‘pyglet’, ‘pygame’
+    winType='pyglet',
     allowGUI=False,
     allowStencil=True,
-    fullscr=True,  # for psychoph lab: fullscr = True
+    fullscr=True,
     monitor=moni,
     color=[0, 0, 0],
     colorSpace='rgb',
@@ -100,16 +97,19 @@ myWin = visual.Window(
     blendMode='avg')
 
 # The size of the field.
-cfg.fovHeight = 24
 fieldSizeinPix = np.round(misc.deg2pix(cfg.fovHeight, moni))
 
-# %%
-"""CONDITIONS"""
+logFile.write('fieldSizeinDeg=' + unicode(cfg.fovHeight) + '\n')
+logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
+
+
+# %% CONDITIONS
+
 str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
-
 filename = os.path.join(str_path_parent_up, 'Conditions',
-                        'Conditions_MotLoc_run01.npz')
+                        'Conditions_MotLoc_run' + str(expInfo['run']) +
+                        '.npz')
 npzfile = np.load(filename)
 Conditions = npzfile["Conditions"].astype('int')
 TargetTRs = npzfile["TargetTRs"].astype('bool')
@@ -121,20 +121,18 @@ Targets = Targets + TargetOnsetinSec
 print('TARGETS: ')
 print Targets
 
-Conditions = np.array(
-    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 7, 8, 9, 10, 11, 12, 0, 0, 1, 2, 3, 4, 5,
-      6, 0, 0, 1, 2, 3, 4, 5, 6],
-     [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
-      0, 0, 3, 3, 3, 3, 3, 3]]).T
-Conditions = Conditions.astype(int)
+#Conditions = np.array(
+#    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 7, 8, 9, 10, 11, 12, 0, 0, 1, 2, 3, 4, 5,
+#      6, 0, 0, 1, 2, 3, 4, 5, 6],
+#     [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
+#      0, 0, 3, 3, 3, 3, 3, 3]]).T
+#Conditions = Conditions.astype(int)
 
 # create array to log key pressed events
 TriggerPressedArray = np.array([])
 TargetPressedArray = np.array([])
 
 # create Positions for the bars
-cfg.barSteps = 43
-cfg.barSize = 3
 Positions = np.linspace(0, cfg.fovHeight-cfg.barSize, cfg.barSteps)
 Positions = misc.deg2pix(Positions, moni)
 
@@ -143,12 +141,7 @@ logFile.write('TargetOnsetinSec=' + unicode(TargetOnsetinSec) + '\n')
 logFile.write('TargetDuration=' + unicode(TargetDuration) + '\n')
 
 
-# %%
-"""TEXTURE AND MASKS"""
-
-# define the texture
-cfg.pix = 1024
-cfg.nFrames = 60
+# %% TEXTURE AND MASKS
 
 # retrieve the different textures
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
@@ -169,10 +162,9 @@ vertiBarMask = npzfile["vertiBarMask"]
 wedgeMasks = npzfile["wedgeMasks"]
 
 
-# %%
-"""STIMULI"""
+# %% STIMULI
 
-# INITIALISE SOME STIMULI
+# main stimulus
 grating = visual.GratingStim(
     myWin,
     tex=np.zeros((cfg.pix, cfg.pix)),
@@ -214,6 +206,20 @@ dotFixSurround = visual.Circle(
     fillColor=[1.0, 1.0, 1.0],
     lineColor=[1.0, 1.0, 1.0],)
 
+# Use circular aperture
+aperture = visual.Aperture(
+    myWin,
+    size=fieldSizeinPix,
+    pos=(0, 0),
+    ori=0,
+    nVert=120,
+    shape='circle',
+    inverted=False,
+    units='pix',
+    name='aperture',
+    autoLog=None)
+aperture.enabled = False
+
 # fixation grid circle
 Circle = visual.Polygon(
     win=myWin,
@@ -247,14 +253,6 @@ Line = visual.Line(
     opacity=1,
     interpolate=True,)
 
-# initialisation method
-message = visual.TextStim(
-    myWin,
-    text='Condition',
-    height=30,
-    pos=(400, 400)
-    )
-
 triggerText = visual.TextStim(
     win=myWin,
     color='white',
@@ -268,8 +266,9 @@ targetText = visual.TextStim(
     autoLog=False,
     )
 
-# %%
-"""FUNCTIONS"""
+
+# %% FUNCTIONS
+
 def fixationGrid():
     """draw fixation grid (circles and lines)"""
     Circle.setSize((2, 2))
@@ -294,10 +293,10 @@ def fixationGrid():
 
 def fixationDotSurround():
     """draw fixation dot surround"""
-    dotFixSurround.radius = 0.4
-    dotFixSurround.fillColor = [0.0, 0.0, 0.0]
-    dotFixSurround.lineColor = [0.0, 0.0, 0.0]
-    dotFixSurround.draw()
+#    dotFixSurround.radius = 0.5
+#    dotFixSurround.fillColor = [0.0, 0.0, 0.0]
+#    dotFixSurround.lineColor = [0.0, 0.0, 0.0]
+#    dotFixSurround.draw()
 
     dotFixSurround.radius = 0.19
     dotFixSurround.fillColor = [1.0, 1.0, 1.0]
@@ -305,8 +304,7 @@ def fixationDotSurround():
     dotFixSurround.draw()
 
 
-# %%
-"""TIME AND TIMING PARAMETERS"""
+# %% TIME AND TIMING PARAMETERS
 
 # get screen refresh rate
 refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
@@ -319,7 +317,7 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
 nrOfVols = len(Conditions)
-durations = np.ones(nrOfVols)*2
+Durations = np.ones(nrOfVols)*2
 totalTime = ExpectedTR*nrOfVols
 
 tempIt = np.tile(np.arange(cfg.nFrames), 2).astype('int32')
@@ -329,8 +327,8 @@ clock = core.Clock()
 logging.setDefaultClock(clock)
 
 
-# %%
-"""RENDER_LOOP"""
+# %% RENDER_LOOP
+
 # Create Counters
 i = 0
 # give the system time to settle
@@ -359,14 +357,14 @@ while clock.getTime() < totalTime:
         grating.opacity = 1
         grating.pos = (0, Positions[key-1]),
         visTexture = horiBar
-        grating.mask = horiBarMask
+        grating.mask = horiBarMask[..., key-1]
 
     # static/flicker control
     elif Conditions[i, 1] == 2:
         grating.opacity = 1
         grating.pos = (Positions[key-1], 0),
         visTexture = vertiBar
-        grating.mask = vertiBarMask
+        grating.mask = vertiBarMask[..., key-1]
 
     # static/flicker control
     elif Conditions[i, 1] == 3:
@@ -375,7 +373,7 @@ while clock.getTime() < totalTime:
         visTexture = wedge
         grating.mask = wedgeMasks[..., key-1]
 
-    while clock.getTime() < np.sum(durations[0:i+1]):
+    while clock.getTime() < np.sum(Durations[0:i+1]):
 
         # get interval time
         t = clock.getTime() % ExpectedTR
@@ -426,13 +424,17 @@ while clock.getTime() < totalTime:
                 logging.data(msg='Key1 pressed')
                 TargetPressedArray = np.append(TargetPressedArray,
                                                clock.getTime())
+            elif key in ['2']:
+                logging.data(msg='Key1 pressed')
+                TargetPressedArray = np.append(TargetPressedArray,
+                                               clock.getTime())
 
     i = i + 1
 
-# %%
-"""CLOSE DISPLAY"""
-myWin.close()
 
-# %%
-"""FINISH"""
+# %% FINISH
+
+# close qindow
+myWin.close()
+# quit system
 core.quit()

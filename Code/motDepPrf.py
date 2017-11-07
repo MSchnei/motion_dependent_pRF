@@ -12,12 +12,12 @@ import config_MotDepPrf as cfg
 from scipy import signal
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 
-# %%
-""" SAVING and LOGGING """
+
+# %% SAVING and LOGGING
+
 # Store info about experiment and experimental run
-expName = 'prfStim_Motion'  # set experiment name here
+expName = 'motDepPrf'  # set experiment name here
 expInfo = {
-    u'maskType': ['mskCircleBar', 'mskSquare', 'mskBar', 'mskCircle'],
     u'participant': u'pilot',
     u'run': u'01',
     }
@@ -64,11 +64,12 @@ outFileName = outFolderName + os.path.sep + '%s_%s_Run%s_%s' % (
 logFile = logging.LogFile(logFileName+'.log', level=logging.INFO)
 logging.console.setLevel(logging.WARNING)  # set console to receive warnings
 
-# %%
-"""MONITOR AND WINDOW"""
+
+# %% MONITOR AND WINDOW
+
 # set monitor information:
-distanceMon = 99  # [99 for Nova coil]
-widthMon = 30  # [30 for Nova coil]
+distanceMon = 29.5  # [99 for Nova coil]
+widthMon = 35  # [30 for Nova coil]
 PixW = 1920.0  # [1920.0] in scanner
 PixH = 1200.0  # [1200.0] in scanner
 
@@ -101,27 +102,39 @@ fieldSizeinPix = np.round(misc.deg2pix(cfg.fovHeight, moni))
 logFile.write('fieldSizeinDeg=' + unicode(cfg.fovHeight) + '\n')
 logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 
-# %%
-"""DURATIONS"""
-# get timings for apertures and motion directions
-Conditions = np.array(
-    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 21, 22, 23, 24, 25, 26, 0, 0, 40, 41, 42,
-      43, 44, 45, 0, 0, 46, 47, 48, 49, 50, 51],
-     [0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
-      0, 0, 3, 3, 3, 3, 3, 3]]).T
-Conditions = Conditions.astype(int)
 
-# get timings for the Targets
-Targets = np.array([2, 4, 6, 8, 10])
-# set expected TR
-ExpectedTR = 2
+# %% CONDITIONS
+
+# get timings for apertures and motion directions
+str_path_parent_up = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..'))
+filename = os.path.join(str_path_parent_up, 'Conditions',
+                        'Conditions_MotDepPrf_run' + str(expInfo['run']) +
+                        '.npz')
+npzfile = np.load(filename)
+Conditions = npzfile["Conditions"].astype('int')
+TargetTRs = npzfile["TargetTRs"].astype('bool')
+TargetOnsetinSec = npzfile["TargetOnsetinSec"]
+TargetDuration = npzfile["TargetDuration"]
+ExpectedTR = npzfile["ExpectedTR"]
+Targets = np.arange(0, len(Conditions)*ExpectedTR, ExpectedTR)[TargetTRs]
+Targets = Targets + TargetOnsetinSec
+print('TARGETS: ')
+print Targets
+
+#Conditions = np.array(
+#    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 21, 22, 23, 24, 25, 26, 0, 0, 40, 41, 42,
+#      43, 44, 45, 0, 0, 46, 47, 48, 49, 50, 51],
+#     [0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
+#      0, 0, 3, 3, 3, 3, 3, 3]]).T
+#Conditions = Conditions.astype(int)
 
 # create array to log key pressed events
 TriggerPressedArray = np.array([])
 TargetPressedArray = np.array([])
 
-# %%
-"""TEXTURE AND MASKS"""
+
+# %% TEXTURE AND MASKS
 
 # retrieve the different textures
 str_path_parent_up = os.path.abspath(
@@ -142,10 +155,9 @@ npzfile = np.load(filename)
 opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int32')
 opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
 
-midGreyTexture = np.zeros((cfg.pix, cfg.pix))
 
-# %%
-"""STIMULI"""
+# %% STIMULI
+
 # main stimulus
 radSqrWave = visual.GratingStim(
     myWin,
@@ -184,7 +196,7 @@ radSqrWaveBckgr = visual.GratingStim(
     depth=0,
     rgbPedestal=(0.0, 0.0, 0.0),
     interpolate=False,
-    name='radSqrWave',
+    name='radSqrWaveBckgr',
     autoLog=None,
     autoDraw=False,
     maskParams=None)
@@ -240,15 +252,7 @@ Line = visual.Line(
     fillColor=None,
     fillColorSpace='rgb',
     opacity=1,
-    interpolate=True,)
-
-# initialisation method
-message = visual.TextStim(
-    myWin,
-    text='Condition',
-    height=30,
-    pos=(400, 400)
-    )
+    interpolate=True)
 
 triggerText = visual.TextStim(
     win=myWin,
@@ -260,11 +264,10 @@ targetText = visual.TextStim(
     win=myWin,
     color='white',
     height=30,
-    autoLog=False,
-    )
+    autoLog=False)
 
-# %%
-"""TIME AND TIMING PARAMETERS"""
+
+# %% TIME AND TIMING PARAMETERS
 
 # get screen refresh rate
 refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
@@ -279,52 +282,49 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
 nrOfVols = len(Conditions)
-durations = np.ones(nrOfVols)*2
+Durations = np.ones(nrOfVols)*ExpectedTR
 totalTime = ExpectedTR*nrOfVols
 
 # define on/off cycle in ms
-lenCyc = 200.
-# derive how much of second that is
-div = 1000/lenCyc
-# define array to cycle opacity
-cycAlt = np.hstack(
-    (signal.hamming(cfg.nFrames/div)[:cfg.nFrames/(div*2)],
-     np.ones(cfg.nFrames/div),
-     signal.hamming(2*cfg.nFrames/(div*3))[cfg.nFrames/(div*3):],
-     np.zeros(cfg.nFrames/(div*3)),
-     signal.hamming(2*cfg.nFrames/(div*3))[:cfg.nFrames/(div*3)],
-     np.ones(cfg.nFrames/div),
-     signal.hamming(2*cfg.nFrames/(div*3))[cfg.nFrames/(div*3):],
-     np.zeros(cfg.nFrames/(div*3)),
-     signal.hamming(2*cfg.nFrames/(div*3))[:cfg.nFrames/(div*3)],
-     np.ones(cfg.nFrames/div),
-     signal.hamming(cfg.nFrames/div)[cfg.nFrames/(div*2):],
-     np.zeros(cfg.nFrames-cfg.nFrames/div))).astype('float32')
-cycAlt = np.hstack((np.ones(cfg.nFrames/div),
-                    np.zeros(cfg.nFrames/div),
-                    np.ones(cfg.nFrames/div),
-                    np.zeros(cfg.nFrames/div),
-                    np.ones(cfg.nFrames/div),
-                    np.zeros(cfg.nFrames)))
-cycOpaque = np.ones(2*cfg.nFrames).astype('float32')
+lenCycStim = 350.
+lenCycRamp = 75.
+lenCycRest = 500.
+# derive how much of a second that is
+divStim = 1000/lenCycStim
+divRamp = 1000/lenCycRamp
+divRest = 1000/lenCycRest
+
+# define arrays to cycle opacity
+cycAlt = np.hstack((
+    signal.hamming(2*cfg.nFrames/divRamp)[:cfg.nFrames/divRamp],
+    np.ones(np.round(cfg.nFrames/divStim)),
+    signal.hamming(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
+    np.zeros(np.round(cfg.nFrames/divRest)),
+    signal.hamming(2*cfg.nFrames/divRamp)[:cfg.nFrames/divRamp],
+    np.ones(np.round(cfg.nFrames/divStim)),
+    signal.hamming(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
+    np.zeros(np.round(cfg.nFrames/divRest)),
+    )).astype('float32')
 cycTransp = np.zeros(2*cfg.nFrames).astype('float32')
 
 # create clock
 clock = core.Clock()
 logging.setDefaultClock(clock)
 
-# %%
-"""FUNCTIONS"""
+
+# %% FUNCTIONS
+
 def fixationGrid():
+    """draw fixation grid (circles and lines)"""
     Circle.setSize((2, 2))
     Circle.draw()
-    Circle.setSize((4, 4))
-    Circle.draw()
-    Circle.setSize((6, 6))
-    Circle.draw()
-    Circle.setSize((8, 8))
+    Circle.setSize((5, 5))
     Circle.draw()
     Circle.setSize((10, 10))
+    Circle.draw()
+    Circle.setSize((20, 20))
+    Circle.draw()
+    Circle.setSize((30, 30))
     Circle.draw()
     Line.setOri(0)
     Line.draw()
@@ -335,8 +335,8 @@ def fixationGrid():
     Line.setOri(135)
     Line.draw()
 
-# %%
-"""RENDER_LOOP"""
+# %% RENDER_LOOP
+
 # Create Counters
 i = 0
 # give the system time to settle
@@ -362,56 +362,42 @@ while clock.getTime() < totalTime:
 
     # set the background mask to opaPgDnMask
     radSqrWaveBckgr.mask = opaPgDnMask
-#    radSqrWaveBckgr.mask = np.ones((cfg.pix, cfg.pix))*-1
 
     # blank
     if Conditions[i, 1] == 0:
         visOpa = cycTransp
-        tempIt = np.tile(
-            np.repeat(np.array([0, 0]), cfg.nFrames/(cfg.cycPerSec*2)),
-            cfg.cycPerSec*2).astype('int32')
+        tempIt = np.tile(np.repeat(np.array([0, 0]),
+                                   cfg.nFrames/(cfg.cycPerSec*2)),
+                         cfg.cycPerSec*2).astype('int32')
         visTexture = ctrlTexture
 
     # static/flicker control
     elif Conditions[i, 1] == 1:
         visOpa = cycAlt
-        tempIt = np.tile(
-            np.repeat(np.array([0, 1]), cfg.nFrames/(cfg.cycPerSec*2)),
-            cfg.cycPerSec*2).astype('int32')
+        tempIt = np.tile(np.repeat(np.array([0, 1]),
+                                   cfg.nFrames/(cfg.cycPerSec*2)),
+                         cfg.cycPerSec*2).astype('int32')
         visTexture = ctrlTexture
 
     # contracting motion
     elif Conditions[i, 1] == 2:
         visOpa = cycAlt
-        tempIt = np.tile(
-            np.arange(cfg.nFrames/cfg.cycPerSec),
-            cfg.cycPerSec*2).astype('int32')[::-1]
+        tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                         cfg.cycPerSec*2).astype('int32')[::-1]
         visTexture = stimTexture
 
     # expanding motion
     elif Conditions[i, 1] == 3:
         visOpa = cycAlt
-        tempIt = np.tile(
-            np.arange(cfg.nFrames/cfg.cycPerSec),
-            cfg.cycPerSec*2).astype('int32')
-
-        test = [visOpa < 1][0]
-        test = np.diff(test)
-        test = np.where(test)[0]
-        whatsInserted = np.tile(tempIt[test[0]], test[1]-test[0])%24
-        tempIt = np.insert(tempIt, test[0], whatsInserted)
-        whatsInserted = (np.tile(tempIt[test[2]], test[3]-test[2]) + len(whatsInserted)) %24
-        tempIt = np.insert(tempIt, test[2], whatsInserted)
-        tempIt = tempIt[:cfg.nFrames*2]
-
+        tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                         cfg.cycPerSec*2).astype('int32')
         visTexture = stimTexture
 
-    while clock.getTime() < np.sum(durations[0:i+1]):
+    while clock.getTime() < np.sum(Durations[0:i+1]):
         # get interval time
         t = clock.getTime() % ExpectedTR
-        # get respective frame
+        # convert time to respective frame
         frame = t*cfg.nFrames
-
         # draw fixation grid (circles and lines)
         fixationGrid()
 
@@ -422,10 +408,10 @@ while clock.getTime() < totalTime:
 
         # set the foreground aperture
         radSqrWave.tex = visTexture[..., tempIt[int(frame)]]
-        # set opacity of foreground aperture
-        radSqrWave.opacity = visOpa[int(frame)]
         # set foreground mask to opaPgDnMask
         radSqrWave.mask = opaPgUpMask
+        # set opacity of foreground aperture
+        radSqrWave.opacity = visOpa[int(frame)]
         # draw the foreground aperture
         radSqrWave.draw()
 
@@ -448,9 +434,6 @@ while clock.getTime() < totalTime:
         # draw fixation point
         dotFix.draw()
 
-        message.setText(clock.getTime())
-        message.draw()
-
         # draw frame
         myWin.flip()
 
@@ -468,8 +451,17 @@ while clock.getTime() < totalTime:
                 logging.data(msg='Key1 pressed')
                 TargetPressedArray = np.append(TargetPressedArray,
                                                clock.getTime())
+            elif key in ['2']:
+                logging.data(msg='Key2 pressed')
+                TargetPressedArray = np.append(TargetPressedArray,
+                                               clock.getTime())
 
     i = i+1
 
+
+# %% FINISH
+
+# close qindow
 myWin.close()
+# quit system
 core.quit()
