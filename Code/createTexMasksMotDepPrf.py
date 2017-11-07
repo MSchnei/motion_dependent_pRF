@@ -32,12 +32,12 @@ polCycles[np.less(polCycles, 0)] = -1
 # get radial sine wave gratings for main conditions
 stimTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
 for ind, ph in enumerate(phase):
-    ima = np.sin((cfg.fovHeight/2.) * cfg.spatFreq * radius - ph)
+    ima = np.sin(cfg.spatFreq * 2. * np.pi * radius - ph)
     stimTexture[..., ind] = ima
 
 # get radial sine wave gratings for control condition
 ctrlTexture = np.zeros((cfg.pix, cfg.pix, 2))
-ima = np.sin((cfg.fovHeight/2.) * cfg.spatFreq * radius)
+ima = np.sin(cfg.spatFreq * 2. * np.pi * radius)
 ima = ima * polCycles
 ctrlTexture[..., 0] = np.copy(ima)
 ctrlTexture[..., 1] = np.copy(ima) * -1
@@ -106,7 +106,7 @@ ary = np.array(lst)
 # set number of successes (number of times the area should be on)
 numSuc = 2
 success = np.copy(ary[np.sum(ary, axis=1) == numSuc, :])
-# reorder the array
+# reorder the array so that split of segments run along desired lines
 success = np.copy(success[[1, 5, 0, 3, 2, 4], :]).T.astype('bool')
 
 # use index to group apertures together
@@ -141,6 +141,7 @@ for i in range(opaPgDnMasks.shape[-1]):
     binMask = opaPgDnMasks[..., i]
     # check whether there is at least one element of 1
     if np.any(binMask == 1):
+        print "image " + str(i)
         # get its distance image
         distIma = getDistIma(binMask, cfg.fovHeight, cfg.pix)
         # assign raised cosine values to bixels less than 0.5 away from border
