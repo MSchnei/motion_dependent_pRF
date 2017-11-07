@@ -12,9 +12,9 @@ from utils import carrierPattern, createBinCircleMask
 
 
 # %% create the carrier pattern (for the bars)
-barTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames))
+barTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
 # set the phase of the carrier pattern
-phase = np.linspace(0., 4.*np.pi, cfg.nFrames)
+phase = np.linspace(0., 2.*np.pi, cfg.nFrames/cfg.cycPerSec)
 lamb = np.sin(phase)/4. + 0.5
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
@@ -79,7 +79,7 @@ horiBarMask = horiBarMask * 2 - 1
 vertiBarMask = vertiBarMask * 2 - 1
 
 # %% create the carrier pattern (for the wedge)
-wedgeTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames))
+wedgeTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
 
 for ind, (t, d) in enumerate(zip(phase, lamb)):
 
@@ -115,10 +115,12 @@ str_path_parent_up = os.path.abspath(
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Textures_MotLoc')
 
-np.savez(filename, horiBar=horiBar, vertiBar=vertiBar, wedge=wedgeTexture)
+np.savez(filename, horiBar=horiBar.astype('int8'),
+         vertiBar=vertiBar.astype('int8'), wedge=wedgeTexture.astype('int8'))
 
 # %% save masks (for the wedge)
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotLoc')
-np.savez(filename, horiBarMask=horiBarMask, vertiBarMask=vertiBarMask,
-         wedgeMasks=wedgeMasks)
+np.savez(filename, horiBarMask=horiBarMask.astype('int8'),
+         vertiBarMask=vertiBarMask.astype('int8'),
+         wedgeMasks=wedgeMasks.astype('int8'))

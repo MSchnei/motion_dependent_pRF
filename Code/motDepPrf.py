@@ -152,7 +152,7 @@ filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotDepPrf.npz')
 npzfile = np.load(filename)
 
-opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int32')
+opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int8')
 opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
 
 
@@ -161,7 +161,7 @@ opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
 # main stimulus
 radSqrWave = visual.GratingStim(
     myWin,
-    tex=np.zeros((cfg.pix, cfg.pix)),
+    tex=np.zeros((cfg.pix/2., cfg.pix/2.)),
     mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
@@ -182,7 +182,7 @@ radSqrWave = visual.GratingStim(
 
 radSqrWaveBckgr = visual.GratingStim(
     myWin,
-    tex=np.zeros((cfg.pix, cfg.pix)),
+    tex=np.zeros((cfg.pix/2., cfg.pix/2.)),
     mask='none',
     pos=(0.0, 0.0),
     size=(fieldSizeinPix, fieldSizeinPix),
@@ -305,7 +305,7 @@ cycAlt = np.hstack((
     signal.hamming(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
     np.zeros(np.round(cfg.nFrames/divRest)),
     )).astype('float32')
-cycTransp = np.zeros(2*cfg.nFrames).astype('float32')
+cycTransp = np.zeros(2*cfg.nFrames).astype('int8')
 
 # create clock
 clock = core.Clock()
@@ -343,6 +343,8 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
+    rate = 0
+
     # get key for masks
     keyMask = Conditions[i, 0]
     # get mask to define the opacity values (foreground)
@@ -352,6 +354,8 @@ while clock.getTime() < totalTime:
 
     # set the background mask to opaPgDnMask
     radSqrWaveBckgr.mask = opaPgDnMask
+    # set foreground mask to opaPgDnMask
+    radSqrWave.mask = opaPgUpMask
 
     # blank
     if Conditions[i, 1] == 0:
@@ -398,8 +402,6 @@ while clock.getTime() < totalTime:
 
         # set the foreground aperture
         radSqrWave.tex = visTexture[..., tempIt[int(frame)]]
-        # set foreground mask to opaPgDnMask
-        radSqrWave.mask = opaPgUpMask
         # set opacity of foreground aperture
         radSqrWave.opacity = visOpa[int(frame)]
         # draw the foreground aperture
@@ -426,6 +428,9 @@ while clock.getTime() < totalTime:
 
         # draw frame
         myWin.flip()
+        print "rate:"
+        print rate
+        rate += 1
 
         # handle key presses each frame
         for key in event.getKeys():

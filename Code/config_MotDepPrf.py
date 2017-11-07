@@ -17,6 +17,8 @@ minR = 3.4
 barSize = 1.7
 # by how much will the aperture step through visual field? in deg of vis angle
 stepSize = 0.34
+# border range for raised cosine ind eg of visual angle
+borderRange = 0.6
 
 # %% set parameters for the texture
 
@@ -27,4 +29,4 @@ angularCycles = np.ceil(np.pi*fovHeight /
                         ((fovHeight/2.) / ((fovHeight/2)*spatFreq*2))
                         )
 # number of cycles per deg of vis angle per second
-cycPerSec = 5
+cycPerSec = 5.

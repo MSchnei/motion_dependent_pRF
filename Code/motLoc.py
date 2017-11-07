@@ -12,7 +12,7 @@ from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
 from scipy import signal
 import config_MotLoc as cfg
-
+from utils import raisedCos
 
 # %% SAVING and LOGGING
 
@@ -149,19 +149,18 @@ filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Textures_MotLoc.npz')
 npzfile = np.load(filename)
 npzfile.files
-horiBar = npzfile["horiBar"]
-vertiBar = npzfile["vertiBar"]
-wedge = npzfile["wedge"]
+horiBar = npzfile["horiBar"].astype('int8')
+vertiBar = npzfile["vertiBar"].astype('int8')
+wedge = npzfile["wedge"].astype('int8')
 
 # retrieve the different masks
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotLoc.npz')
 npzfile = np.load(filename)
 npzfile.files
-horiBarMask = npzfile["horiBarMask"]
-vertiBarMask = npzfile["vertiBarMask"]
-wedgeMasks = npzfile["wedgeMasks"]
-
+horiBarMask = npzfile["horiBarMask"].astype('int8')
+vertiBarMask = npzfile["vertiBarMask"].astype('int8')
+wedgeMasks = npzfile["wedgeMasks"].astype('int8')
 
 # %% STIMULI
 
@@ -308,7 +307,8 @@ nrOfVols = len(Conditions)
 Durations = np.ones(nrOfVols)*ExpectedTR
 totalTime = ExpectedTR*nrOfVols
 
-tempIt = np.tile(np.arange(cfg.nFrames), ExpectedTR).astype('int32')
+tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                 cfg.cycPerSec*2).astype('int32')
 
 # define on/off cycle in ms
 lenCycStim = 1500.
@@ -319,11 +319,11 @@ divRamp = 1000/lenCycRamp
 
 # define arrays to cycle opacity
 cycAlt = np.hstack((
-    signal.hann(2*cfg.nFrames/divRamp)[:cfg.nFrames/divRamp],
+    raisedCos(2*cfg.nFrames/divRamp, T=0.5, beta=0.8)[:cfg.nFrames/divRamp],
     np.ones(np.round(cfg.nFrames/divStim)),
-    signal.hann(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
+    raisedCos(2*cfg.nFrames/divRamp, T=0.5, beta=0.8)[cfg.nFrames/divRamp:],
     )).astype('float32')
-cycTransp = np.zeros(2*cfg.nFrames).astype('float32')
+cycTransp = np.zeros(2*cfg.nFrames).astype('int8')
 
 # create clock
 clock = core.Clock()

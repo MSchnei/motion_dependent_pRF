@@ -14,10 +14,11 @@ from PIL import Image
 from utils import createBinCircleMask, getDistIma, assignBorderVals, cart2pol
 
 # %% create the radial sine wave pattern
-
 # get cartesian coordinates which are needed to define the textures
-x, y = np.meshgrid(np.linspace(-cfg.fovHeight/2., cfg.fovHeight/2., cfg.pix),
-                   np.linspace(-cfg.fovHeight/2., cfg.fovHeight/2., cfg.pix))
+x, y = np.meshgrid(np.linspace(-cfg.fovHeight/2., cfg.fovHeight/2.,
+                               cfg.pix/2.),
+                   np.linspace(-cfg.fovHeight/2., cfg.fovHeight/2.,
+                               cfg.pix/2.))
 
 # get polar coordinates which are needed to define the textures
 theta, radius = cart2pol(x, y)
@@ -30,13 +31,13 @@ polCycles[np.greater_equal(polCycles, 0)] = 1
 polCycles[np.less(polCycles, 0)] = -1
 
 # get radial sine wave gratings for main conditions
-stimTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
+stimTexture = np.zeros((cfg.pix/2., cfg.pix/2., cfg.nFrames/cfg.cycPerSec))
 for ind, ph in enumerate(phase):
     ima = np.sin(cfg.spatFreq * 2. * np.pi * radius - ph)
     stimTexture[..., ind] = ima
 
 # get radial sine wave gratings for control condition
-ctrlTexture = np.zeros((cfg.pix, cfg.pix, 2))
+ctrlTexture = np.zeros((cfg.pix/2., cfg.pix/2., 2))
 ima = np.sin(cfg.spatFreq * 2. * np.pi * radius)
 ima = ima * polCycles
 ctrlTexture[..., 0] = np.copy(ima)
@@ -58,7 +59,8 @@ str_path_parent_up = os.path.abspath(
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Textures_MotDepPrf')
 
-np.savez(filename, stimTexture=stimTexture, ctrlTexture=ctrlTexture)
+np.savez(filename, stimTexture=stimTexture.astype('int8'),
+         ctrlTexture=ctrlTexture.astype('int8'))
 
 # %% create ring wedge masks
 
@@ -79,7 +81,7 @@ combis = list(itertools.product(radiPairs, thetaPairs))
 
 
 # %% create masks for the background (no raised cosine)
-binMasks = np.empty((cfg.pix, cfg.pix, len(combis)), dtype='int32')
+binMasks = np.empty((cfg.pix, cfg.pix, len(combis)), dtype='int8')
 for ind, combi in enumerate(combis):
     binMasks[..., ind] = createBinCircleMask(cfg.fovHeight, cfg.pix,
                                              rLow=combi[0][0],
@@ -111,7 +113,7 @@ success = np.copy(success[[1, 5, 0, 3, 2, 4], :]).T.astype('bool')
 
 # use index to group apertures together
 opaPgDnMasks = np.empty((cfg.pix, cfg.pix, len(combis)/numAprtCrcle*n),
-                        dtype='int32')
+                        dtype='int8')
 for ind1, jumpIdx in enumerate(jumpInd):
     for ind2, lgc in enumerate(success):
         # get the right indices
@@ -146,7 +148,7 @@ for i in range(opaPgDnMasks.shape[-1]):
         distIma = getDistIma(binMask, cfg.fovHeight, cfg.pix)
         # assign raised cosine values to bixels less than 0.5 away from border
         opaPgUpMasks[..., i] = assignBorderVals(binMask, distIma,
-                                                borderRange=0.3)
+                                                borderRange=cfg.borderRange)
     else:
         # assign old contrast mask
         opaPgUpMasks[..., i] = binMask
@@ -181,4 +183,5 @@ str_path_parent_up = os.path.abspath(
 filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotDepPrf')
 
-np.savez(filename, opaPgDnMasks=opaPgDnMasks, opaPgUpMasks=opaPgUpMasks)
+np.savez(filename, opaPgDnMasks=opaPgDnMasks.astype('int8'),
+         opaPgUpMasks=opaPgUpMasks.astype('float32'))
