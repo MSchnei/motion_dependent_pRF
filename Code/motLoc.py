@@ -10,6 +10,7 @@ from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import os
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
+from scipy import signal
 import config_MotLoc as cfg
 
 
@@ -291,19 +292,6 @@ def fixationGrid():
     Line.draw()
 
 
-def fixationDotSurround():
-    """draw fixation dot surround"""
-#    dotFixSurround.radius = 0.5
-#    dotFixSurround.fillColor = [0.0, 0.0, 0.0]
-#    dotFixSurround.lineColor = [0.0, 0.0, 0.0]
-#    dotFixSurround.draw()
-
-    dotFixSurround.radius = 0.19
-    dotFixSurround.fillColor = [1.0, 1.0, 1.0]
-    dotFixSurround.lineColor = [1.0, 1.0, 1.0]
-    dotFixSurround.draw()
-
-
 # %% TIME AND TIMING PARAMETERS
 
 # get screen refresh rate
@@ -317,12 +305,27 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
 nrOfVols = len(Conditions)
-Durations = np.ones(nrOfVols)*2
+Durations = np.ones(nrOfVols)*ExpectedTR
 totalTime = ExpectedTR*nrOfVols
 
-tempIt = np.tile(np.arange(cfg.nFrames), 2).astype('int32')
+tempIt = np.tile(np.arange(cfg.nFrames), ExpectedTR).astype('int32')
 
-# create clock and Landolt clock
+# define on/off cycle in ms
+lenCycStim = 1500.
+lenCycRamp = 250.
+# derive how much of a second that is
+divStim = 1000/lenCycStim
+divRamp = 1000/lenCycRamp
+
+# define arrays to cycle opacity
+cycAlt = np.hstack((
+    signal.hann(2*cfg.nFrames/divRamp)[:cfg.nFrames/divRamp],
+    np.ones(np.round(cfg.nFrames/divStim)),
+    signal.hann(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
+    )).astype('float32')
+cycTransp = np.zeros(2*cfg.nFrames).astype('float32')
+
+# create clock
 clock = core.Clock()
 logging.setDefaultClock(clock)
 
@@ -350,27 +353,27 @@ while clock.getTime() < totalTime:
     # static/flicker control
     if Conditions[i, 1] == 0:
         visTexture = wedge
-        grating.opacity = 0
+        visOpa = cycTransp
 
     # static/flicker control
     elif Conditions[i, 1] == 1:
-        grating.opacity = 1
-        grating.pos = (0, Positions[key-1]),
+        grating.pos = (0, Positions[key-1])
         visTexture = horiBar
+        visOpa = cycAlt
         grating.mask = horiBarMask[..., key-1]
 
     # static/flicker control
     elif Conditions[i, 1] == 2:
-        grating.opacity = 1
-        grating.pos = (Positions[key-1], 0),
+        grating.pos = (Positions[key-1], 0)
         visTexture = vertiBar
+        visOpa = cycAlt
         grating.mask = vertiBarMask[..., key-1]
 
     # static/flicker control
     elif Conditions[i, 1] == 3:
-        grating.opacity = 1
-        grating.pos = (0, 0),
+        grating.pos = (0, 0)
         visTexture = wedge
+        visOpa = cycAlt
         grating.mask = wedgeMasks[..., key-1]
 
     while clock.getTime() < np.sum(Durations[0:i+1]):
@@ -382,7 +385,9 @@ while clock.getTime() < totalTime:
         # draw fixation grid (circles and lines)
         fixationGrid()
 
-        # set the foreground aperture
+        # set the opacity
+        grating.opacity = visOpa[int(frame)]
+        # set the texture
         grating.tex = visTexture[..., tempIt[int(frame)]]
 
         grating.draw()
@@ -402,8 +407,7 @@ while clock.getTime() < totalTime:
             dotFix.lineColor = [1.0, 0.0, 0.0]
 
         # draw fixation point surround
-        fixationDotSurround()
-
+        dotFixSurround.draw()
         # draw fixation point
         dotFix.draw()
 

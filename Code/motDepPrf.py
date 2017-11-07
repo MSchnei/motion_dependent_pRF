@@ -315,17 +315,7 @@ logging.setDefaultClock(clock)
 # %% FUNCTIONS
 
 def fixationGrid():
-    """draw fixation grid (circles and lines)"""
-    Circle.setSize((2, 2))
-    Circle.draw()
-    Circle.setSize((5, 5))
-    Circle.draw()
-    Circle.setSize((10, 10))
-    Circle.draw()
-    Circle.setSize((20, 20))
-    Circle.draw()
-    Circle.setSize((30, 30))
-    Circle.draw()
+    """draw fixation grid (only lines)"""
     Line.setOri(0)
     Line.draw()
     Line.setOri(45)
