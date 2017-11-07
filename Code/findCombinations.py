@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # set number of repetitions (number of times the stimulus is shows)
-n = 5
+n = 7
 lst = list(itertools.product([0, 1], repeat=n))
 
 for ind, item in enumerate(lst):
@@ -17,7 +17,7 @@ for ind, item in enumerate(lst):
 lst = np.array(lst)
 
 # set number of successes (number of times the area is on)
-numSuc = 3
+numSuc = 4
 success = np.copy(lst[np.sum(lst, axis=1) == numSuc, :])
 
 aryCorr = np.empty((len(success), len(success)))
