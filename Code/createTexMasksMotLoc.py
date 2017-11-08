@@ -8,16 +8,18 @@ import os
 import numpy as np
 from PIL import Image
 import config_MotLoc as cfg
-from utils import carrierPattern, createBinCircleMask
+from utils import (carrierPattern, createBinCircleMask,  getDistIma,
+                   assignBorderVals)
 
+# %% create the carrier pattern (texture for the bars)
 
-# %% create the carrier pattern (for the bars)
+# create template
 barTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
 # set the phase of the carrier pattern
 phase = np.linspace(0., 2.*np.pi, cfg.nFrames/cfg.cycPerSec)
 lamb = np.sin(phase)/4. + 0.5
+# create the texture over time frames
 for ind, (t, d) in enumerate(zip(phase, lamb)):
-
     ima = carrierPattern(d, t, cfg.numSquaresBars, cfg.pix)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
@@ -30,10 +32,9 @@ for ind in np.arange(barTexture.shape[2]):
     im.save("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/"
             + "Ima_" + str(ind) + ".png")
 
-# %% create textures (for the bars)
+# assign parts of the texture to to get the bars
 horiBar = np.zeros((barTexture.shape))
 vertiBar = np.zeros((barTexture.shape))
-
 horiBar[0:cfg.pix/cfg.numSquaresBars, :, :] = np.copy(
     barTexture[0:cfg.pix/cfg.numSquaresBars, :, :])
 vertiBar[:, 0:cfg.pix/cfg.numSquaresBars, :] = np.copy(
@@ -42,11 +43,13 @@ vertiBar[:, 0:cfg.pix/cfg.numSquaresBars, :] = np.copy(
 # %% create masks (for the bars)
 
 # create templates for horizontal bar
-horiBarMask = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)))
+horiBarMasks = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)),
+                        dtype='float16')
 horiBarShape = np.zeros((barTexture.shape[:2]))
 horiBarShape[0:cfg.pix/cfg.numSquaresBars, :] = 1
 # create templates for vertical bar
-vertiBarMask = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)))
+vertiBarMasks = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)),
+                         dtype='float16')
 vertiBarShape = np.zeros((barTexture.shape[:2]))
 vertiBarShape[:, 0:cfg.pix/cfg.numSquaresBars] = 1
 # create overall circular aperture for all stimuli
@@ -56,33 +59,49 @@ circleAperture = createBinCircleMask(cfg.fovHeight, cfg.pix, rLow=cfg.minR,
 # determine the bar positions in pixels
 barSizeinPix = cfg.pix*(cfg.barSize/cfg.fovHeight)
 posInPix = np.linspace(0, cfg.pix-barSizeinPix, cfg.barSteps)
-
+# combine the horiBarShape with the circleAperture
 for ind, pos in enumerate(posInPix):
     # roll forward
     ima = np.roll(horiBarShape, int(pos), axis=0).astype('bool')
     # combine with circle aperture
     ima = np.logical_and(ima, circleAperture)
+    # ramp the borders with a cosine function
+    if np.any(ima == 1):
+        print "image " + str(ind)
+        # get its distance image
+        distIma = getDistIma(ima, cfg.fovHeight, cfg.pix)
+        # assign raised cosine values to bixels less than 0.5 away from border
+        ima = assignBorderVals(ima, distIma, borderRange=cfg.borderRange)
     # roll back
-    ima = np.roll(ima, -int(pos), axis=0).astype('bool')
-    horiBarMask[:, :, ind] = ima
-
+    ima = np.roll(ima, -int(pos), axis=0)
+    horiBarMasks[:, :, ind] = ima
+# combine the vertiBarShape with the circleAperture
 for ind, pos in enumerate(posInPix):
     # roll forward
     ima = np.roll(vertiBarShape, int(pos), axis=1).astype('bool')
     # combine with circle aperture
     ima = np.logical_and(ima, circleAperture)
+    # ramp the borders with a cosine function
+    if np.any(ima == 1):
+        print "image " + str(ind)
+        # get its distance image
+        distIma = getDistIma(ima, cfg.fovHeight, cfg.pix)
+        # assign raised cosine values to bixels less than 0.5 away from border
+        ima = assignBorderVals(ima, distIma, borderRange=cfg.borderRange)
     # roll back
-    ima = np.roll(ima, -int(pos), axis=1).astype('bool')
-    vertiBarMask[:, :, ind] = ima
+    ima = np.roll(ima, -int(pos), axis=1)
+    vertiBarMasks[:, :, ind] = ima
 
-horiBarMask = horiBarMask * 2 - 1
-vertiBarMask = vertiBarMask * 2 - 1
+# adjust range for psychopy
+horiBarMasks = horiBarMasks * 2 - 1
+vertiBarMasks = vertiBarMasks * 2 - 1
 
-# %% create the carrier pattern (for the wedge)
+# %% create the carrier pattern (texture for the wedge)
+
+# create template
 wedgeTexture = np.zeros((cfg.pix, cfg.pix, cfg.nFrames/cfg.cycPerSec))
-
+# create the texture over time frames
 for ind, (t, d) in enumerate(zip(phase, lamb)):
-
     ima = carrierPattern(d, t, cfg.numSquaresWedge, cfg.pix)
     # 1 = white, #-1 = black
     ima[np.greater(ima, 0)] = 1
@@ -98,7 +117,7 @@ maxTheta = minTheta + cfg.wedgeWidth
 combis = zip(np.zeros(len(minTheta)), np.ones(len(minTheta))*cfg.fovHeight/2.,
              minTheta, maxTheta)
 # create the wedgeMasks
-wedgeMasks = np.empty((cfg.pix, cfg.pix, len(combis)), dtype='int32')
+wedgeMasks = np.empty((cfg.pix, cfg.pix, len(combis)), dtype='float16')
 for ind, combi in enumerate(combis):
     wedgeMasks[..., ind] = createBinCircleMask(cfg.fovHeight, cfg.pix,
                                                rLow=combi[0],
@@ -106,21 +125,42 @@ for ind, combi in enumerate(combis):
                                                thetaMin=combi[2],
                                                thetaMax=combi[3],
                                                rMin=cfg.minR)
+
+# ramp the borders of wedgeMasks with a cosine function
+for i in range(wedgeMasks.shape[-1]):
+    # get a single mask
+    binMask = wedgeMasks[..., i]
+    # check whether there is at least one element of 1
+    if np.any(binMask == 1):
+        print "image " + str(i)
+        # get its distance image
+        distIma = getDistIma(binMask, cfg.fovHeight, cfg.pix)
+        # assign raised cosine values to pixels less than borderRange
+        wedgeMasks[..., i] = assignBorderVals(binMask, distIma,
+                                              borderRange=cfg.borderRange)
+    else:
+        # assign old contrast mask
+        wedgeMasks[..., i] = binMask
+
+# save wedge masks as images, if wanted
+for ind in np.arange(wedgeMasks.shape[2]):
+    im = Image.fromarray(255*wedgeMasks[..., ind].astype(np.uint8))
+    im.save("/home/marian/Documents/Testing/CircleBarApertures/wedgeMasks/"
+            + "Ima_" + str(ind) + ".png")
+
+# adjust range for psychopy
 wedgeMasks = wedgeMasks*2-1
 
-# %%  save textures (for the wedge)
-str_path_parent_up = os.path.abspath(
+# %%  save textures
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
-                        'Textures_MotLoc')
-
-np.savez(filename, horiBar=horiBar.astype('int8'),
+fileName = os.path.join(strPathParentUp, 'MaskTextures', 'Textures_MotLoc')
+np.savez(fileName, horiBar=horiBar.astype('int8'),
          vertiBar=vertiBar.astype('int8'), wedge=wedgeTexture.astype('int8'))
 
-# %% save masks (for the wedge)
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
-                        'Masks_MotLoc')
-np.savez(filename, horiBarMask=horiBarMask.astype('int8'),
-         vertiBarMask=vertiBarMask.astype('int8'),
-         wedgeMasks=wedgeMasks.astype('int8'))
+# %% save masks
+fileName = os.path.join(strPathParentUp, 'MaskTextures', 'Masks_MotLoc')
+np.savez(fileName, horiBarMasks=horiBarMasks.astype('float16'),
+         vertiBarMasks=vertiBarMasks.astype('float16'),
+         wedgeMasks=wedgeMasks.astype('float16'))

@@ -12,7 +12,6 @@ from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
 from scipy import signal
 import config_MotLoc as cfg
-from utils import raisedCos
 
 # %% SAVING and LOGGING
 
@@ -32,13 +31,13 @@ expInfo['expName'] = expName
 # get current path and save to variable _thisDir
 _thisDir = os.path.dirname(os.path.abspath(__file__))
 # get parent path and move up one directory
-str_path_parent_up = os.path.abspath(
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 # move to parent_up path
-os.chdir(str_path_parent_up)
+os.chdir(strPathParentUp)
 
 # Name and create specific subject folder
-subjFolderName = str_path_parent_up + os.path.sep + \
+subjFolderName = strPathParentUp + os.path.sep + \
     '%s_SubjData' % (expInfo['participant'])
 if not os.path.isdir(subjFolderName):
     os.makedirs(subjFolderName)
@@ -106,61 +105,53 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 
 # %% CONDITIONS
 
-str_path_parent_up = os.path.abspath(
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
-filename = os.path.join(str_path_parent_up, 'Conditions',
+filename = os.path.join(strPathParentUp, 'Conditions',
                         'Conditions_MotLoc_run' + str(expInfo['run']) +
                         '.npz')
 npzfile = np.load(filename)
-Conditions = npzfile["Conditions"].astype('int')
-TargetTRs = npzfile["TargetTRs"].astype('bool')
-TargetOnsetinSec = npzfile["TargetOnsetinSec"]
-TargetDuration = npzfile["TargetDuration"]
-ExpectedTR = npzfile["ExpectedTR"]
-Targets = np.arange(0, len(Conditions)*ExpectedTR, ExpectedTR)[TargetTRs]
-Targets = Targets + TargetOnsetinSec
+conditions = npzfile["conditions"].astype('int')
+targetTRs = npzfile["targetTRs"].astype('bool')
+targetOffsetSec = npzfile["targetOffsetSec"]
+targetDuration = npzfile["targetDuration"]
+expectedTR = npzfile["expectedTR"]
+targets = np.arange(0, len(conditions)*expectedTR, expectedTR)[targetTRs]
+targets = targets + targetOffsetSec
 print('TARGETS: ')
-print Targets
-
-#Conditions = np.array(
-#    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 7, 8, 9, 10, 11, 12, 0, 0, 1, 2, 3, 4, 5,
-#      6, 0, 0, 1, 2, 3, 4, 5, 6],
-#     [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
-#      0, 0, 3, 3, 3, 3, 3, 3]]).T
-#Conditions = Conditions.astype(int)
+print targets
 
 # create array to log key pressed events
-TriggerPressedArray = np.array([])
-TargetPressedArray = np.array([])
+triggerPressedArray = np.array([])
+targetPressedArray = np.array([])
 
-# create Positions for the bars
-Positions = np.linspace(0, cfg.fovHeight-cfg.barSize, cfg.barSteps)
-Positions = misc.deg2pix(Positions, moni)
+# create positions for the bars
+positions = np.linspace(0, cfg.fovHeight-cfg.barSize, 31)
+positions = misc.deg2pix(positions, moni)
 
-logFile.write('Conditions=' + unicode(Conditions) + '\n')
-logFile.write('TargetOnsetinSec=' + unicode(TargetOnsetinSec) + '\n')
-logFile.write('TargetDuration=' + unicode(TargetDuration) + '\n')
+# log conditions and targets
+logFile.write('conditions=' + unicode(conditions) + '\n')
+logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
+logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
 
 
 # %% TEXTURE AND MASKS
 
 # retrieve the different textures
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
+filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Textures_MotLoc.npz')
 npzfile = np.load(filename)
-npzfile.files
 horiBar = npzfile["horiBar"].astype('int8')
 vertiBar = npzfile["vertiBar"].astype('int8')
 wedge = npzfile["wedge"].astype('int8')
 
 # retrieve the different masks
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
+filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Masks_MotLoc.npz')
 npzfile = np.load(filename)
-npzfile.files
-horiBarMask = npzfile["horiBarMask"].astype('int8')
-vertiBarMask = npzfile["vertiBarMask"].astype('int8')
-wedgeMasks = npzfile["wedgeMasks"].astype('int8')
+horiBarMasks = npzfile["horiBarMasks"].astype('float16')
+vertiBarMasks = npzfile["vertiBarMasks"].astype('float16')
+wedgeMasks = npzfile["wedgeMasks"].astype('float16')
 
 # %% STIMULI
 
@@ -182,7 +173,7 @@ grating = visual.GratingStim(
     rgbPedestal=(0.0, 0.0, 0.0),
     interpolate=False,
     name='grating',
-    autoLog=None,
+    autoLog=False,
     autoDraw=False,
     maskParams=None)
 
@@ -206,24 +197,10 @@ dotFixSurround = visual.Circle(
     fillColor=[1.0, 1.0, 1.0],
     lineColor=[1.0, 1.0, 1.0],)
 
-# Use circular aperture
-aperture = visual.Aperture(
-    myWin,
-    size=fieldSizeinPix,
-    pos=(0, 0),
-    ori=0,
-    nVert=120,
-    shape='circle',
-    inverted=False,
-    units='pix',
-    name='aperture',
-    autoLog=None)
-aperture.enabled = False
-
 # fixation grid circle
-Circle = visual.Polygon(
+circleFix = visual.Polygon(
     win=myWin,
-    name='Circle',
+    name='circleFix',
     edges=90,
     ori=0,
     units='deg',
@@ -238,9 +215,9 @@ Circle = visual.Polygon(
     autoLog=False,)
 
 # fixation grid line
-Line = visual.Line(
+lineFix = visual.Line(
     win=myWin,
-    name='Line',
+    name='lineFix',
     autoLog=False,
     start=(-PixH, 0),
     end = (PixH, 0),
@@ -257,7 +234,8 @@ triggerText = visual.TextStim(
     win=myWin,
     color='white',
     height=30,
-    text='Experiment will start soon.',)
+    text='Experiment will start soon.',
+    autoLog=False)
 
 targetText = visual.TextStim(
     win=myWin,
@@ -271,24 +249,24 @@ targetText = visual.TextStim(
 
 def fixationGrid():
     """draw fixation grid (circles and lines)"""
-    Circle.setSize((2, 2))
-    Circle.draw()
-    Circle.setSize((5, 5))
-    Circle.draw()
-    Circle.setSize((10, 10))
-    Circle.draw()
-    Circle.setSize((20, 20))
-    Circle.draw()
-    Circle.setSize((30, 30))
-    Circle.draw()
-    Line.setOri(0)
-    Line.draw()
-    Line.setOri(45)
-    Line.draw()
-    Line.setOri(90)
-    Line.draw()
-    Line.setOri(135)
-    Line.draw()
+    circleFix.setSize((2, 2))
+    circleFix.draw()
+    circleFix.setSize((5, 5))
+    circleFix.draw()
+    circleFix.setSize((10, 10))
+    circleFix.draw()
+    circleFix.setSize((20, 20))
+    circleFix.draw()
+    circleFix.setSize((30, 30))
+    circleFix.draw()
+    lineFix.setOri(0)
+    lineFix.draw()
+    lineFix.setOri(45)
+    lineFix.draw()
+    lineFix.setOri(90)
+    lineFix.draw()
+    lineFix.setOri(135)
+    lineFix.draw()
 
 
 # %% TIME AND TIMING PARAMETERS
@@ -303,25 +281,28 @@ logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
-nrOfVols = len(Conditions)
-Durations = np.ones(nrOfVols)*ExpectedTR
-totalTime = ExpectedTR*nrOfVols
+nrOfVols = len(conditions)
+durations = np.ones(nrOfVols)*expectedTR
+totalTime = expectedTR*nrOfVols
 
 tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
                  cfg.cycPerSec*2).astype('int32')
 
 # define on/off cycle in ms
-lenCycStim = 1500.
-lenCycRamp = 250.
+lenCycStim = 1400.
+lenCycRamp = 50.
+lenCycRest = 500.
 # derive how much of a second that is
 divStim = 1000/lenCycStim
 divRamp = 1000/lenCycRamp
+divRest = 1000/lenCycRest
 
 # define arrays to cycle opacity
 cycAlt = np.hstack((
-    raisedCos(2*cfg.nFrames/divRamp, T=0.5, beta=0.8)[:cfg.nFrames/divRamp],
+    signal.hamming(2*cfg.nFrames/divRamp)[:cfg.nFrames/divRamp],
     np.ones(np.round(cfg.nFrames/divStim)),
-    raisedCos(2*cfg.nFrames/divRamp, T=0.5, beta=0.8)[cfg.nFrames/divRamp:],
+    signal.hamming(2*cfg.nFrames/divRamp)[cfg.nFrames/divRamp:],
+    np.zeros(np.round(cfg.nFrames/divRest)),
     )).astype('float32')
 cycTransp = np.zeros(2*cfg.nFrames).astype('int8')
 
@@ -348,38 +329,40 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
-    key = Conditions[i, 0]
+    rate = 0
 
-    # static/flicker control
-    if Conditions[i, 1] == 0:
+    key = conditions[i, 0]
+
+    # blank
+    if conditions[i, 1] == 0:
         visTexture = wedge
         visOpa = cycTransp
 
-    # static/flicker control
-    elif Conditions[i, 1] == 1:
-        grating.pos = (0, Positions[key-1])
+    # horibar
+    elif conditions[i, 1] == 1:
+        grating.pos = (0, positions[key-1])
         visTexture = horiBar
         visOpa = cycAlt
-        grating.mask = horiBarMask[..., key-1]
+        grating.mask = horiBarMasks[..., key-1]
 
-    # static/flicker control
-    elif Conditions[i, 1] == 2:
-        grating.pos = (Positions[key-1], 0)
+    # vertibar
+    elif conditions[i, 1] == 2:
+        grating.pos = (positions[key-1], 0)
         visTexture = vertiBar
         visOpa = cycAlt
-        grating.mask = vertiBarMask[..., key-1]
+        grating.mask = vertiBarMasks[..., key-1]
 
-    # static/flicker control
-    elif Conditions[i, 1] == 3:
+    # wedge
+    elif conditions[i, 1] == 3:
         grating.pos = (0, 0)
         visTexture = wedge
         visOpa = cycAlt
         grating.mask = wedgeMasks[..., key-1]
 
-    while clock.getTime() < np.sum(Durations[0:i+1]):
+    while clock.getTime() < np.sum(durations[0:i+1]):
 
         # get interval time
-        t = clock.getTime() % ExpectedTR
+        t = clock.getTime() % expectedTR
         # get respective frame
         frame = t*cfg.nFrames
         # draw fixation grid (circles and lines)
@@ -394,8 +377,8 @@ while clock.getTime() < totalTime:
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
-        if (sum(clock.getTime() >= Targets) + sum(clock.getTime() <
-           Targets + 0.3) == len(Targets)+1):
+        if (sum(clock.getTime() >= targets) + sum(clock.getTime() <
+           targets + targetDuration) == len(targets)+1):
             # display target!
             # change color fix dot surround to red
             dotFix.fillColor = [0.5, 0.0, 0.0]
@@ -413,6 +396,9 @@ while clock.getTime() < totalTime:
 
         # draw frame
         myWin.flip()
+        print "rate:"
+        print rate
+        rate += 1
 
         # handle key presses each frame
         for key in event.getKeys():
@@ -422,15 +408,15 @@ while clock.getTime() < totalTime:
                 core.quit()
             elif key[0] in ['5']:
                 logging.data(msg='Scanner trigger')
-                TriggerPressedArray = np.append(TriggerPressedArray,
+                triggerPressedArray = np.append(triggerPressedArray,
                                                 clock.getTime())
             elif key in ['1']:
                 logging.data(msg='Key1 pressed')
-                TargetPressedArray = np.append(TargetPressedArray,
+                targetPressedArray = np.append(targetPressedArray,
                                                clock.getTime())
             elif key in ['2']:
                 logging.data(msg='Key1 pressed')
-                TargetPressedArray = np.append(TargetPressedArray,
+                targetPressedArray = np.append(targetPressedArray,
                                                clock.getTime())
 
     i = i + 1

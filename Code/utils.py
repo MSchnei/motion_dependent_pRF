@@ -215,6 +215,7 @@ def assignBorderVals(binMask, distIma, borderRange=0.5):
 
     return binMask
 
+
 def time2frame(t, frameRate=60):
     """Convert time to frames"""
     # time wil be between 0 and TR
@@ -250,3 +251,25 @@ def raisedCos(steps, T=0.5, beta=0.5):
         else:
             hf[ind] = 0
     return hf
+
+
+def balancedLatinSquares(n):
+    """Create balanced latin square for (incomplete) counterbalanced designs.
+    Parameters
+    ----------
+    n : integer
+        Number of conditions
+    Returns
+    -------
+    l : list
+        Counter-balanced latin square
+    source:
+    Notes
+    -------
+    https://medium.com/@graycoding/balanced-latin-squares-in-python
+    """
+    l = [[((j/2+1 if j % 2 else n-j/2) + i) % n + 1 for j in range(n)]
+         for i in range(n)]
+    if n % 2:  # Repeat reversed for odd n
+        l += [seq[::-1] for seq in l]
+    return l

@@ -31,13 +31,13 @@ expInfo['expName'] = expName
 # get current path and save to variable _thisDir
 _thisDir = os.path.dirname(os.path.abspath(__file__))
 # get parent path and move up one directory
-str_path_parent_up = os.path.abspath(
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 # move to parent_up path
-os.chdir(str_path_parent_up)
+os.chdir(strPathParentUp)
 
 # Name and create specific subject folder
-subjFolderName = str_path_parent_up + os.path.sep + \
+subjFolderName = strPathParentUp + os.path.sep + \
     '%s_SubjData' % (expInfo['participant'])
 if not os.path.isdir(subjFolderName):
     os.makedirs(subjFolderName)
@@ -106,52 +106,47 @@ logFile.write('fieldSizeinPix=' + unicode(fieldSizeinPix) + '\n')
 # %% CONDITIONS
 
 # get timings for apertures and motion directions
-str_path_parent_up = os.path.abspath(
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
-filename = os.path.join(str_path_parent_up, 'Conditions',
+filename = os.path.join(strPathParentUp, 'Conditions',
                         'Conditions_MotDepPrf_run' + str(expInfo['run']) +
                         '.npz')
 npzfile = np.load(filename)
-Conditions = npzfile["Conditions"].astype('int')
-TargetTRs = npzfile["TargetTRs"].astype('bool')
-TargetOnsetinSec = npzfile["TargetOnsetinSec"]
-TargetDuration = npzfile["TargetDuration"]
-ExpectedTR = npzfile["ExpectedTR"]
-Targets = np.arange(0, len(Conditions)*ExpectedTR, ExpectedTR)[TargetTRs]
-Targets = Targets + TargetOnsetinSec
+conditions = npzfile["conditions"].astype('int')
+targetTRs = npzfile["targetTRs"].astype('bool')
+targetOffsetSec = npzfile["targetOffsetSec"]
+targetDuration = npzfile["targetDuration"]
+expectedTR = npzfile["expectedTR"]
+targets = np.arange(0, len(conditions)*expectedTR, expectedTR)[targetTRs]
+targets = targets + targetOffsetSec
 print('TARGETS: ')
-print Targets
-
-#Conditions = np.array(
-#    [[0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 21, 22, 23, 24, 25, 26, 0, 0, 40, 41, 42,
-#      43, 44, 45, 0, 0, 46, 47, 48, 49, 50, 51],
-#     [0, 0, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2,
-#      0, 0, 3, 3, 3, 3, 3, 3]]).T
-#Conditions = Conditions.astype(int)
+print targets
 
 # create array to log key pressed events
-TriggerPressedArray = np.array([])
-TargetPressedArray = np.array([])
+triggerPressedArray = np.array([])
+targetPressedArray = np.array([])
 
+# log conditions and targets
+logFile.write('conditions=' + unicode(conditions) + '\n')
+logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
+logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
 
 # %% TEXTURE AND MASKS
 
 # retrieve the different textures
-str_path_parent_up = os.path.abspath(
+strPathParentUp = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))
 
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
+filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Textures_MotDepPrf.npz')
 npzfile = np.load(filename)
-
 stimTexture = npzfile["stimTexture"].astype('int8')
 ctrlTexture = npzfile["ctrlTexture"].astype('int8')
 
 # retrieve the different masks
-filename = os.path.join(str_path_parent_up, 'MaskTextures',
+filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Masks_MotDepPrf.npz')
 npzfile = np.load(filename)
-
 opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int8')
 opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
 
@@ -174,9 +169,9 @@ radSqrWave = visual.GratingStim(
     opacity=1.0,
     depth=0,
     rgbPedestal=(0.0, 0.0, 0.0),
-    interpolate=False,
+    interpolate=True,
     name='radSqrWave',
-    autoLog=None,
+    autoLog=False,
     autoDraw=False,
     maskParams=None)
 
@@ -197,7 +192,7 @@ radSqrWaveBckgr = visual.GratingStim(
     rgbPedestal=(0.0, 0.0, 0.0),
     interpolate=False,
     name='radSqrWaveBckgr',
-    autoLog=None,
+    autoLog=False,
     autoDraw=False,
     maskParams=None)
 
@@ -221,27 +216,10 @@ dotFixSurround = visual.Circle(
     fillColor=[1.0, 1.0, 1.0],
     lineColor=[1.0, 1.0, 1.0],)
 
-# fixation grid circle
-Circle = visual.Polygon(
-    win=myWin,
-    name='Circle',
-    edges=90,
-    ori=0,
-    units='deg',
-    pos=[0, 0],
-    lineWidth=2,
-    lineColor=[-0.2, -0.2, -0.2],
-    lineColorSpace='rgb',
-    fillColor=None,
-    fillColorSpace='rgb',
-    opacity=1,
-    interpolate=True,
-    autoLog=False,)
-
 # fixation grid line
-Line = visual.Line(
+lineFix = visual.Line(
     win=myWin,
-    name='Line',
+    name='lineFix',
     autoLog=False,
     start=(-PixH, 0),
     end = (PixH, 0),
@@ -252,13 +230,14 @@ Line = visual.Line(
     fillColor=None,
     fillColorSpace='rgb',
     opacity=1,
-    interpolate=True)
+    interpolate=True,)
 
 triggerText = visual.TextStim(
     win=myWin,
     color='white',
     height=30,
-    text='Experiment will start soon.',)
+    text='Experiment will start soon.',
+    autoLog=False)
 
 targetText = visual.TextStim(
     win=myWin,
@@ -281,13 +260,13 @@ logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
 # set durations
-nrOfVols = len(Conditions)
-Durations = np.ones(nrOfVols)*ExpectedTR
-totalTime = ExpectedTR*nrOfVols
+nrOfVols = len(conditions)
+durations = np.ones(nrOfVols)*expectedTR
+totalTime = expectedTR*nrOfVols
 
 # define on/off cycle in ms
-lenCycStim = 350.
-lenCycRamp = 75.
+lenCycStim = 400.
+lenCycRamp = 50.
 lenCycRest = 500.
 # derive how much of a second that is
 divStim = 1000/lenCycStim
@@ -316,14 +295,14 @@ logging.setDefaultClock(clock)
 
 def fixationGrid():
     """draw fixation grid (only lines)"""
-    Line.setOri(0)
-    Line.draw()
-    Line.setOri(45)
-    Line.draw()
-    Line.setOri(90)
-    Line.draw()
-    Line.setOri(135)
-    Line.draw()
+    lineFix.setOri(0)
+    lineFix.draw()
+    lineFix.setOri(45)
+    lineFix.draw()
+    lineFix.setOri(90)
+    lineFix.draw()
+    lineFix.setOri(135)
+    lineFix.draw()
 
 # %% RENDER_LOOP
 
@@ -346,7 +325,7 @@ while clock.getTime() < totalTime:
     rate = 0
 
     # get key for masks
-    keyMask = Conditions[i, 0]
+    keyMask = conditions[i, 0]
     # get mask to define the opacity values (foreground)
     opaPgUpMask = np.squeeze(opaPgUpMasks[:, :, keyMask])
     # get mask to define the opacity values (background)
@@ -358,7 +337,7 @@ while clock.getTime() < totalTime:
     radSqrWave.mask = opaPgUpMask
 
     # blank
-    if Conditions[i, 1] == 0:
+    if conditions[i, 1] == 0:
         visOpa = cycTransp
         tempIt = np.tile(np.repeat(np.array([0, 0]),
                                    cfg.nFrames/(cfg.cycPerSec*2)),
@@ -366,7 +345,7 @@ while clock.getTime() < totalTime:
         visTexture = ctrlTexture
 
     # static/flicker control
-    elif Conditions[i, 1] == 1:
+    elif conditions[i, 1] == 1:
         visOpa = cycAlt
         tempIt = np.tile(np.repeat(np.array([0, 1]),
                                    cfg.nFrames/(cfg.cycPerSec*2)),
@@ -374,22 +353,22 @@ while clock.getTime() < totalTime:
         visTexture = ctrlTexture
 
     # contracting motion
-    elif Conditions[i, 1] == 2:
+    elif conditions[i, 1] == 2:
         visOpa = cycAlt
         tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
                          cfg.cycPerSec*2).astype('int32')[::-1]
         visTexture = stimTexture
 
     # expanding motion
-    elif Conditions[i, 1] == 3:
+    elif conditions[i, 1] == 3:
         visOpa = cycAlt
         tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
                          cfg.cycPerSec*2).astype('int32')
         visTexture = stimTexture
 
-    while clock.getTime() < np.sum(Durations[0:i+1]):
+    while clock.getTime() < np.sum(durations[0:i+1]):
         # get interval time
-        t = clock.getTime() % ExpectedTR
+        t = clock.getTime() % expectedTR
         # convert time to respective frame
         frame = t*cfg.nFrames
         # draw fixation grid (circles and lines)
@@ -409,8 +388,8 @@ while clock.getTime() < totalTime:
 
         # decide whether to draw target
         # first time in target interval? reset target counter to 0!
-        if (sum(clock.getTime() >= Targets) + sum(clock.getTime() <
-           Targets + 0.3) == len(Targets)+1):
+        if (sum(clock.getTime() >= targets) + sum(clock.getTime() <
+           targets + targetDuration) == len(targets)+1):
             # display target!
             # change color fix dot surround to red
             dotFix.fillColor = [0.5, 0.0, 0.0]
@@ -440,15 +419,15 @@ while clock.getTime() < totalTime:
                 core.quit()
             elif key[0] in ['5']:
                 logging.data(msg='Scanner trigger')
-                TriggerPressedArray = np.append(TriggerPressedArray,
+                triggerPressedArray = np.append(triggerPressedArray,
                                                 clock.getTime())
             elif key in ['1']:
                 logging.data(msg='Key1 pressed')
-                TargetPressedArray = np.append(TargetPressedArray,
+                targetPressedArray = np.append(targetPressedArray,
                                                clock.getTime())
             elif key in ['2']:
                 logging.data(msg='Key2 pressed')
-                TargetPressedArray = np.append(TargetPressedArray,
+                targetPressedArray = np.append(targetPressedArray,
                                                clock.getTime())
 
     i = i+1
