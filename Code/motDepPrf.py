@@ -130,6 +130,9 @@ targetPressedArray = np.array([])
 logFile.write('conditions=' + unicode(conditions) + '\n')
 logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
 logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
+logFile.write('expectedTR=' + unicode(expectedTR) + '\n')
+logFile.write('targets=' + unicode(targets) + '\n')
+
 
 # %% TEXTURE AND MASKS
 
@@ -169,7 +172,7 @@ radSqrWave = visual.GratingStim(
     opacity=1.0,
     depth=0,
     rgbPedestal=(0.0, 0.0, 0.0),
-    interpolate=True,
+    interpolate=False,
     name='radSqrWave',
     autoLog=False,
     autoDraw=False,
@@ -249,13 +252,14 @@ targetText = visual.TextStim(
 # %% TIME AND TIMING PARAMETERS
 
 # get screen refresh rate
-refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
+refr_rate = myWin.getActualFrameRate()
 if refr_rate is not None:
     frameDur = 1.0/round(refr_rate)
 else:
-    frameDur = 1.0/cfg.nFrames  # couldn't get a reliable measure so guess
+    frameDur = 1.0/60.0
 print "refr_rate:"
 print refr_rate
+# log refresh rate and fram duration
 logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
@@ -263,11 +267,19 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 nrOfVols = len(conditions)
 durations = np.ones(nrOfVols)*expectedTR
 totalTime = expectedTR*nrOfVols
+# log durations
+logFile.write('nrOfVols=' + unicode(nrOfVols) + '\n')
+logFile.write('durations=' + unicode(durations) + '\n')
+logFile.write('totalTime=' + unicode(totalTime) + '\n')
 
-# define on/off cycle in ms
+# define opacity on/off cycle in ms
 lenCycStim = 400.
 lenCycRamp = 50.
 lenCycRest = 500.
+# log opacity on/off cycle in ms
+logFile.write('lenCycStim=' + unicode(lenCycStim) + '\n')
+logFile.write('lenCycRamp=' + unicode(lenCycRamp) + '\n')
+logFile.write('lenCycRest=' + unicode(lenCycRest) + '\n')
 # derive how much of a second that is
 divStim = 1000/lenCycStim
 divRamp = 1000/lenCycRamp
@@ -338,32 +350,44 @@ while clock.getTime() < totalTime:
 
     # blank
     if conditions[i, 1] == 0:
+        # set timing for the opacity
         visOpa = cycTransp
-        tempIt = np.tile(np.repeat(np.array([0, 0]),
-                                   cfg.nFrames/(cfg.cycPerSec*2)),
-                         cfg.cycPerSec*2).astype('int32')
+        # set timing sequence for the texture
+        texTime = np.tile(np.repeat(np.array([0, 0]),
+                                    cfg.nFrames/(cfg.cycPerSec*2)),
+                          cfg.cycPerSec*2).astype('int32')
+        # set texture
         visTexture = ctrlTexture
 
     # static/flicker control
     elif conditions[i, 1] == 1:
+        # set timing for the opacity
         visOpa = cycAlt
-        tempIt = np.tile(np.repeat(np.array([0, 1]),
-                                   cfg.nFrames/(cfg.cycPerSec*2)),
-                         cfg.cycPerSec*2).astype('int32')
+        # set timing sequence for the texture
+        texTime = np.tile(np.repeat(np.array([0, 1]),
+                                    cfg.nFrames/(cfg.cycPerSec*2)),
+                          cfg.cycPerSec*2).astype('int32')
+        # set texture
         visTexture = ctrlTexture
 
     # contracting motion
     elif conditions[i, 1] == 2:
+        # set timing for the opacity
         visOpa = cycAlt
-        tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                         cfg.cycPerSec*2).astype('int32')[::-1]
+        # set timing sequence for the texture
+        texTime = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                          cfg.cycPerSec*2).astype('int32')[::-1]
+        # set texture
         visTexture = stimTexture
 
     # expanding motion
     elif conditions[i, 1] == 3:
+        # set timing for the opacity
         visOpa = cycAlt
-        tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                         cfg.cycPerSec*2).astype('int32')
+        # set timing sequence for the texture
+        texTime = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                          cfg.cycPerSec*2).astype('int32')
+        # set texture
         visTexture = stimTexture
 
     while clock.getTime() < np.sum(durations[0:i+1]):
@@ -380,7 +404,7 @@ while clock.getTime() < totalTime:
         radSqrWaveBckgr.draw()
 
         # set the foreground aperture
-        radSqrWave.tex = visTexture[..., tempIt[int(frame)]]
+        radSqrWave.tex = visTexture[..., texTime[int(frame)]]
         # set opacity of foreground aperture
         radSqrWave.opacity = visOpa[int(frame)]
         # draw the foreground aperture

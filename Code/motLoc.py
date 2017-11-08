@@ -16,7 +16,7 @@ import config_MotLoc as cfg
 # %% SAVING and LOGGING
 
 # Store info about experiment and experimental run
-expName = 'motDepPrf'  # set experiment name here
+expName = 'motLoc'  # set experiment name here
 expInfo = {
     u'participant': u'pilot',
     u'run': u'01',
@@ -133,6 +133,9 @@ positions = misc.deg2pix(positions, moni)
 logFile.write('conditions=' + unicode(conditions) + '\n')
 logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
 logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
+logFile.write('expectedTR=' + unicode(expectedTR) + '\n')
+logFile.write('targets=' + unicode(targets) + '\n')
+logFile.write('positions=' + unicode(positions) + '\n')
 
 
 # %% TEXTURE AND MASKS
@@ -272,11 +275,14 @@ def fixationGrid():
 # %% TIME AND TIMING PARAMETERS
 
 # get screen refresh rate
-refr_rate = myWin.getActualFrameRate()  # get screen refresh rate
+refr_rate = myWin.getActualFrameRate()
 if refr_rate is not None:
     frameDur = 1.0/round(refr_rate)
 else:
-    frameDur = 1.0/60.0  # couldn't get a reliable measure so guess
+    frameDur = 1.0/60.0
+print "refr_rate:"
+print refr_rate
+# log refresh rate and fram duration
 logFile.write('RefreshRate=' + unicode(refr_rate) + '\n')
 logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 
@@ -284,14 +290,23 @@ logFile.write('FrameDuration=' + unicode(frameDur) + '\n')
 nrOfVols = len(conditions)
 durations = np.ones(nrOfVols)*expectedTR
 totalTime = expectedTR*nrOfVols
+# log durations
+logFile.write('nrOfVols=' + unicode(nrOfVols) + '\n')
+logFile.write('durations=' + unicode(durations) + '\n')
+logFile.write('totalTime=' + unicode(totalTime) + '\n')
 
-tempIt = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                 cfg.cycPerSec*2).astype('int32')
+# set timing sequence for the texture
+texTime = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                  cfg.cycPerSec*2).astype('int32')
 
-# define on/off cycle in ms
+# define opacity on/off cycle in ms
 lenCycStim = 1400.
 lenCycRamp = 50.
 lenCycRest = 500.
+# log opacity on/off cycle in ms
+logFile.write('lenCycStim=' + unicode(lenCycStim) + '\n')
+logFile.write('lenCycRamp=' + unicode(lenCycRamp) + '\n')
+logFile.write('lenCycRest=' + unicode(lenCycRest) + '\n')
 # derive how much of a second that is
 divStim = 1000/lenCycStim
 divRamp = 1000/lenCycRamp
@@ -335,28 +350,42 @@ while clock.getTime() < totalTime:
 
     # blank
     if conditions[i, 1] == 0:
+        # set texture
         visTexture = wedge
+        # set timing for the opacity
         visOpa = cycTransp
 
     # horibar
     elif conditions[i, 1] == 1:
+        # set stimulus position
         grating.pos = (0, positions[key-1])
+        # set texture
         visTexture = horiBar
+        # set timing for the opacity
         visOpa = cycAlt
+        # set mask specific to this condition
         grating.mask = horiBarMasks[..., key-1]
 
     # vertibar
     elif conditions[i, 1] == 2:
+        # set stimulus position
         grating.pos = (positions[key-1], 0)
+        # set texture
         visTexture = vertiBar
+        # set timing for the opacity
         visOpa = cycAlt
+        # set mask specific to this condition
         grating.mask = vertiBarMasks[..., key-1]
 
     # wedge
     elif conditions[i, 1] == 3:
+        # set stimulus position
         grating.pos = (0, 0)
+        # set texture
         visTexture = wedge
+        # set timing for the opacity
         visOpa = cycAlt
+        # set mask specific to this condition
         grating.mask = wedgeMasks[..., key-1]
 
     while clock.getTime() < np.sum(durations[0:i+1]):
@@ -371,7 +400,7 @@ while clock.getTime() < totalTime:
         # set the opacity
         grating.opacity = visOpa[int(frame)]
         # set the texture
-        grating.tex = visTexture[..., tempIt[int(frame)]]
+        grating.tex = visTexture[..., texTime[int(frame)]]
 
         grating.draw()
 

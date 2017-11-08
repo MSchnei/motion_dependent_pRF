@@ -20,8 +20,8 @@ targetDuration = 0.3
 nrOfCond = 3
 
 # set number of blank trials
-nrNullTrialStart = 1  # 6
-nrNullTrialEnd = 6
+nrNullTrialStart = 1  # 7
+nrNullTrialEnd = 7
 nrNullTrialBetw = 14
 
 # prepare vectors for presentation order

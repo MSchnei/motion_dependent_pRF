@@ -20,9 +20,9 @@ targetDuration = 0.3
 nrOfCond = 3
 
 # set number of blank trials
-nrNullTrialStart = 1  # 12
-nrNullTrialEnd = 12
-nrNullTrialBetw = 12
+nrNullTrialStart = 1  # 7
+nrNullTrialEnd = 7
+nrNullTrialBetw = 14
 
 # %% prepare
 
