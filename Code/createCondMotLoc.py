@@ -14,7 +14,7 @@ from utils import balancedLatinSquares
 
 # %% set paramters
 expectedTR = 2
-targetDuration = 0.3
+targetDuration = 0.5
 
 # total number of conditions
 nrOfCond = 3
@@ -75,17 +75,12 @@ for ind, indCond in enumerate(aryPerm):
     # %% Prepare target times
 
     # prepare targets
-    nrOfTargets = int(len(conditions)/6)
     targetTRs = np.zeros(len(conditions))
-    lgcRep = True
-    while lgcRep:
-        targetPos = np.random.choice(np.arange(nrNullTrialStart,
-                                     len(conditions)-nrNullTrialEnd),
-                                     nrOfTargets,
-                                     replace=False)
-        lgcRep = np.greater(np.sum(np.diff(np.sort(targetPos)) == 1), 0)
-    targetTRs[targetPos] = 1
-    assert nrOfTargets == np.sum(targetTRs)
+    targetPos = np.random.choice(np.arange(4), size=len(conditions),
+                                 replace=True,
+                                 p=np.array([0.25, 0.25, 0.25, 0.25]))
+    targetTRs[targetPos == 1] = 1
+    nrOfTargets = np.sum(targetTRs == 1)
 
     # prepare random target onset delay
     targetOffsetSec = np.random.uniform(0.1,
@@ -102,5 +97,6 @@ for ind, indCond in enumerate(aryPerm):
         filename = os.path.join(strPathParentUp, 'Conditions',
                                 'Conditions_MotLoc_run0' + str(ind+1))
     np.savez(filename, conditions=conditions.astype('int8'),
-             targetTRs=targetTRs, targetOffsetSec=targetOffsetSec,
+             targetTRs=targetTRs.astype('bool'),
+             targetOffsetSec=targetOffsetSec,
              targetDuration=targetDuration, expectedTR=expectedTR)

@@ -43,14 +43,14 @@ vertiBar[:, 0:cfg.pix/cfg.numSquaresBars, :] = np.copy(
 # %% create masks (for the bars)
 
 # create templates for horizontal bar
-horiBarMasks = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)),
+horiBarMasks = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
                         dtype='float16')
-horiBarShape = np.zeros((barTexture.shape[:2]))
+horiBarShape = np.zeros((cfg.pix, cfg.pix))
 horiBarShape[0:cfg.pix/cfg.numSquaresBars, :] = 1
 # create templates for vertical bar
-vertiBarMasks = np.zeros((barTexture.shape[:2] + (cfg.barSteps,)),
+vertiBarMasks = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
                          dtype='float16')
-vertiBarShape = np.zeros((barTexture.shape[:2]))
+vertiBarShape = np.zeros((cfg.pix, cfg.pix))
 vertiBarShape[:, 0:cfg.pix/cfg.numSquaresBars] = 1
 # create overall circular aperture for all stimuli
 circleAperture = createBinCircleMask(cfg.fovHeight, cfg.pix, rLow=cfg.minR,

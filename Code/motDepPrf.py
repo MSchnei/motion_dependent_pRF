@@ -94,7 +94,8 @@ myWin = visual.Window(
     color=[0, 0, 0],
     colorSpace='rgb',
     units='pix',
-    blendMode='avg')
+    blendMode='avg',
+    autoLog=False)
 
 # The size of the field.
 fieldSizeinPix = np.round(misc.deg2pix(cfg.fovHeight, moni))
@@ -116,6 +117,7 @@ conditions = npzfile["conditions"].astype('int')
 targetTRs = npzfile["targetTRs"].astype('bool')
 targetOffsetSec = npzfile["targetOffsetSec"]
 targetDuration = npzfile["targetDuration"]
+targetType = npzfile["targetType"]
 expectedTR = npzfile["expectedTR"]
 targets = np.arange(0, len(conditions)*expectedTR, expectedTR)[targetTRs]
 targets = targets + targetOffsetSec
@@ -130,6 +132,7 @@ targetPressedArray = np.array([])
 logFile.write('conditions=' + unicode(conditions) + '\n')
 logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
 logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
+logFile.write('targetType=' + unicode(targetType) + '\n')
 logFile.write('expectedTR=' + unicode(expectedTR) + '\n')
 logFile.write('targets=' + unicode(targets) + '\n')
 
@@ -206,8 +209,8 @@ dotFix = visual.Circle(
     name='dotFix',
     units='deg',
     radius=0.125,
-    fillColor=[1.0, 0.0, 0.0],
-    lineColor=[1.0, 0.0, 0.0],)
+    fillColor=[0.6, 0.0, 0.0],
+    lineColor=[0.6, 0.0, 0.0],)
 
 # surround of the fixation dot
 dotFixSurround = visual.Circle(
@@ -235,6 +238,7 @@ lineFix = visual.Line(
     opacity=1,
     interpolate=True,)
 
+# text at start of experiment
 triggerText = visual.TextStim(
     win=myWin,
     color='white',
@@ -242,6 +246,7 @@ triggerText = visual.TextStim(
     text='Experiment will start soon.',
     autoLog=False)
 
+# text at end of experiment
 targetText = visual.TextStim(
     win=myWin,
     color='white',
@@ -415,14 +420,21 @@ while clock.getTime() < totalTime:
         if (sum(clock.getTime() >= targets) + sum(clock.getTime() <
            targets + targetDuration) == len(targets)+1):
             # display target!
-            # change color fix dot surround to red
-            dotFix.fillColor = [0.5, 0.0, 0.0]
-            dotFix.lineColor = [0.5, 0.0, 0.0]
+            targetColor = targetType[i]
+            # change color fix dot
+            if targetColor == 1:
+                # change color fix dot surround to brighter red
+                dotFix.fillColor = [1.0, 0.0, 0.0]
+                dotFix.lineColor = [1.0, 0.0, 0.0]
+            elif targetColor == 2:
+                # change color fix dot surround to darker red
+                dotFix.fillColor = [0.2, 0.0, 0.0]
+                dotFix.lineColor = [0.2, 0.0, 0.0]
         else:
             # dont display target!
             # keep color fix dot surround yellow
-            dotFix.fillColor = [1.0, 0.0, 0.0]
-            dotFix.lineColor = [1.0, 0.0, 0.0]
+            dotFix.fillColor = [0.6, 0.0, 0.0]
+            dotFix.lineColor = [0.6, 0.0, 0.0]
 
         # draw fixation point surround
         dotFixSurround.draw()
@@ -455,6 +467,56 @@ while clock.getTime() < totalTime:
                                                clock.getTime())
 
     i = i+1
+
+logging.data('EndOfRun' + unicode(expInfo['run']) + '\n')
+
+# %% TARGET DETECTION RESULTS
+
+# calculate target detection results
+# create an array 'targetDetected' for showing which targets were detected
+targetDetected = np.zeros(len(targets))
+if len(targetPressedArray) == 0:
+    # if no buttons were pressed
+    print "No keys were pressed/registered"
+    targetsDet = 0
+else:
+    # if buttons were pressed:
+    for index, target in enumerate(targets):
+        for TimeKeyPress in targetPressedArray:
+            if (float(TimeKeyPress) >= float(target) and
+                    float(TimeKeyPress) <= float(target) + 2):
+                targetDetected[index] = 1
+
+logging.data('ArrayOfDetectedTargets' + unicode(targetDetected))
+print 'Array Of Detected Targets: ' + str(targetDetected)
+
+# number of detected targets
+targetsDet = sum(targetDetected)
+logging.data('NumberOfDetectedTargets' + unicode(targetsDet))
+# detection ratio
+detectRatio = targetsDet/len(targetDetected)
+logging.data('RatioOfDetectedTargets' + unicode(detectRatio))
+
+# display target detection results to participant
+resultText = 'You detected %i out of %i targets.' % (targetsDet, len(targets))
+print resultText
+logging.data(resultText)
+# also display a motivational slogan
+if detectRatio >= 0.95:
+    feedbackText = 'Excellent! Keep up the good work'
+elif detectRatio < 0.95 and detectRatio > 0.85:
+    feedbackText = 'Well done! Keep up the good work'
+elif detectRatio < 0.8 and detectRatio > 0.65:
+    feedbackText = 'Please try to focus more'
+else:
+    feedbackText = 'You really need to focus more!'
+
+targetText.setText(resultText+'\n'+feedbackText)
+logFile.write(unicode(resultText) + '\n')
+logFile.write(unicode(feedbackText) + '\n')
+targetText.draw()
+myWin.flip()
+core.wait(5)
 
 
 # %% FINISH

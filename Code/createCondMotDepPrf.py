@@ -14,7 +14,7 @@ import os
 nrOfApertures = 60
 
 expectedTR = 2
-targetDuration = 0.3
+targetDuration = 0.7
 
 # total number of conditions
 nrOfCond = 3
@@ -73,22 +73,23 @@ for ind, indCond in enumerate(aryPerm):
     # %% Prepare target times
 
     # prepare targets
-    nrOfTargets = int(len(conditions1)/6)
     targetTRs = np.zeros(len(conditions1))
-    lgcRep = True
-    while lgcRep:
-        targetPos = np.random.choice(np.arange(nrNullTrialStart,
-                                     len(conditions1)-nrNullTrialEnd),
-                                     nrOfTargets,
-                                     replace=False)
-        lgcRep = np.greater(np.sum(np.diff(np.sort(targetPos)) == 1), 0)
-    targetTRs[targetPos] = 1
-    assert nrOfTargets == np.sum(targetTRs)
+    targetPos = np.random.choice(np.arange(2), size=len(conditions1),
+                                 replace=True,
+                                 p=np.array([0.5, 0.5]))
+    targetTRs[targetPos == 1] = 1
+    nrOfTargets = np.sum(targetTRs == 1)
 
     # prepare random target onset delay
     targetOffsetSec = np.random.uniform(0.1,
                                         expectedTR-targetDuration,
                                         size=nrOfTargets)
+    # prepare target type
+    targetType = np.zeros(len(conditions1))
+    targetType[targetTRs == 1] = np.random.choice(np.array([1, 2]),
+                                                  size=nrOfTargets,
+                                                  replace=True,
+                                                  p=np.array([0.5, 0.5]))
 
     # %% save the results
 
@@ -101,8 +102,10 @@ for ind, indCond in enumerate(aryPerm):
         filename1 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_MotDepPrf_run0' + str(2*ind+1))
     np.savez(filename1, conditions=conditions1,
-             targetTRs=targetTRs, targetOffsetSec=targetOffsetSec,
-             targetDuration=targetDuration, expectedTR=expectedTR)
+             targetTRs=targetTRs.astype('bool'),
+             targetOffsetSec=targetOffsetSec,
+             targetDuration=targetDuration, targetType=targetType,
+             expectedTR=expectedTR)
     if 2*ind+2 > 9:
         filename2 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_MotDepPrf_run' + str(2*ind+2))
@@ -110,5 +113,7 @@ for ind, indCond in enumerate(aryPerm):
         filename2 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_MotDepPrf_run0' + str(2*ind+2))
     np.savez(filename2, conditions=conditions2,
-             targetTRs=targetTRs, targetOffsetSec=targetOffsetSec,
-             targetDuration=targetDuration, expectedTR=expectedTR)
+             targetTRs=targetTRs.astype('bool'),
+             targetOffsetSec=targetOffsetSec,
+             targetDuration=targetDuration, targetType=targetType,
+             expectedTR=expectedTR)
