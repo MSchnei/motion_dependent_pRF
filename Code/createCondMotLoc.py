@@ -14,7 +14,7 @@ from utils import balancedLatinSquares
 
 # %% set paramters
 expectedTR = 2
-targetDuration = 0.5
+targetDuration = 0.7
 
 # total number of conditions
 nrOfCond = 3
