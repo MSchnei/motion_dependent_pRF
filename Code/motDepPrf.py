@@ -459,6 +459,9 @@ while clock.getTime() < totalTime:
 
 # %% FINISH
 
+# log button presses
+logFile.write('triggerPressedArray=' + unicode(triggerPressedArray) + '\n')
+logFile.write('targetPressedArray=' + unicode(targetPressedArray) + '\n')
 # close qindow
 myWin.close()
 # quit system
