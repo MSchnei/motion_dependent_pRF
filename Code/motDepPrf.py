@@ -6,12 +6,15 @@ Created on Tue Oct 24 16:46:04 2017
 """
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
-import numpy as np
 import os
-import config_MotDepPrf as cfg
-from scipy import signal
+import numpy as np
 from psychopy import visual, event, core,  monitors, logging, gui, data, misc
+from scipy import signal
+import config_MotDepPrf as cfg
 
+
+# set power
+power = False
 
 # %% SAVING and LOGGING
 
@@ -88,7 +91,7 @@ myWin = visual.Window(
     screen=0,
     winType='pyglet',
     allowGUI=False,
-    allowStencil=True,
+    allowStencil=False,
     fullscr=True,
     monitor=moni,
     color=[0, 0, 0],
@@ -153,7 +156,8 @@ ctrlTexture = npzfile["ctrlTexture"].astype('int8')
 filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Masks_MotDepPrf.npz')
 npzfile = np.load(filename)
-opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int8')
+if power:
+    opaPgDnMasks = npzfile["opaPgDnMasks"].astype('int8')
 opaPgUpMasks = npzfile["opaPgUpMasks"].astype('float32')
 
 
@@ -181,26 +185,28 @@ radSqrWave = visual.GratingStim(
     autoDraw=False,
     maskParams=None)
 
-radSqrWaveBckgr = visual.GratingStim(
-    myWin,
-    tex=np.zeros((cfg.pix/2., cfg.pix/2.)),
-    mask='none',
-    pos=(0.0, 0.0),
-    size=(fieldSizeinPix, fieldSizeinPix),
-    sf=None,
-    ori=0.0,
-    phase=(0.0, 0.0),
-    color=(1.0, 1.0, 1.0),
-    colorSpace='rgb',
-    contrast=1.0,
-    opacity=1.0,
-    depth=0,
-    rgbPedestal=(0.0, 0.0, 0.0),
-    interpolate=False,
-    name='radSqrWaveBckgr',
-    autoLog=False,
-    autoDraw=False,
-    maskParams=None)
+# main stimulus
+if power:
+    radSqrWaveBckgr = visual.GratingStim(
+        myWin,
+        tex=np.zeros((cfg.pix/2., cfg.pix/2.)),
+        mask='none',
+        pos=(0.0, 0.0),
+        size=(fieldSizeinPix, fieldSizeinPix),
+        sf=None,
+        ori=0.0,
+        phase=(0.0, 0.0),
+        color=(1.0, 1.0, 1.0),
+        colorSpace='rgb',
+        contrast=1.0,
+        opacity=1.0,
+        depth=0,
+        rgbPedestal=(0.0, 0.0, 0.0),
+        interpolate=False,
+        name='radSqrWaveBckgr',
+        autoLog=False,
+        autoDraw=False,
+        maskParams=None)
 
 # fixation dot
 dotFix = visual.Circle(
@@ -278,9 +284,9 @@ logFile.write('durations=' + unicode(durations) + '\n')
 logFile.write('totalTime=' + unicode(totalTime) + '\n')
 
 # define opacity on/off cycle in ms
-lenCycStim = 400.
+lenCycStim = 300.
 lenCycRamp = 50.
-lenCycRest = 500.
+lenCycRest = 600.
 # log opacity on/off cycle in ms
 logFile.write('lenCycStim=' + unicode(lenCycStim) + '\n')
 logFile.write('lenCycRamp=' + unicode(lenCycRamp) + '\n')
@@ -302,6 +308,16 @@ cycAlt = np.hstack((
     np.zeros(np.round(cfg.nFrames/divRest)),
     )).astype('float32')
 cycTransp = np.zeros(2*cfg.nFrames).astype('int8')
+
+# set timing sequence for the texture
+texTimeBlank = np.tile(np.repeat(np.array([0, 0]),
+                                 cfg.nFrames/(cfg.cycPerSec*2)),
+                       cfg.cycPerSec*2).astype('int8')
+texTimeFlicker = np.tile(np.repeat(np.array([0, 1]),
+                                   cfg.nFrames/(cfg.cycPerSec*2)),
+                         cfg.cycPerSec*2).astype('int8')
+texTimeRadial = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                        cfg.cycPerSec*2).astype('int8')
 
 # create clock
 clock = core.Clock()
@@ -339,28 +355,27 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
-    rate = 0
-
     # get key for masks
     keyMask = conditions[i, 0]
+
     # get mask to define the opacity values (foreground)
     opaPgUpMask = np.squeeze(opaPgUpMasks[:, :, keyMask])
     # get mask to define the opacity values (background)
-    opaPgDnMask = np.squeeze(opaPgDnMasks[:, :, keyMask])
+    if power:
+        opaPgDnMask = np.squeeze(opaPgDnMasks[:, :, keyMask])
 
-    # set the background mask to opaPgDnMask
-    radSqrWaveBckgr.mask = opaPgDnMask
     # set foreground mask to opaPgDnMask
     radSqrWave.mask = opaPgUpMask
+    # set the background mask to opaPgDnMask
+    if power:
+        radSqrWaveBckgr.mask = opaPgDnMask
 
     # blank
     if conditions[i, 1] == 0:
         # set timing for the opacity
         visOpa = cycTransp
         # set timing sequence for the texture
-        texTime = np.tile(np.repeat(np.array([0, 0]),
-                                    cfg.nFrames/(cfg.cycPerSec*2)),
-                          cfg.cycPerSec*2).astype('int32')
+        texTime = texTimeBlank
         # set texture
         visTexture = ctrlTexture
 
@@ -369,9 +384,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
-        texTime = np.tile(np.repeat(np.array([0, 1]),
-                                    cfg.nFrames/(cfg.cycPerSec*2)),
-                          cfg.cycPerSec*2).astype('int32')
+        texTime = texTimeFlicker
         # set texture
         visTexture = ctrlTexture
 
@@ -380,8 +393,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
-        texTime = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                          cfg.cycPerSec*2).astype('int32')[::-1]
+        texTime = texTimeRadial
         # set texture
         visTexture = stimTexture
 
@@ -390,8 +402,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
-        texTime = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                          cfg.cycPerSec*2).astype('int32')
+        texTime = texTimeRadial
         # set texture
         visTexture = stimTexture
 
@@ -403,10 +414,11 @@ while clock.getTime() < totalTime:
         # draw fixation grid (circles and lines)
         fixationGrid()
 
-        # set opacity of background aperture
-        radSqrWaveBckgr.opacity = visOpa[int(frame)]
-        # draw the background aperture
-        radSqrWaveBckgr.draw()
+        if power:
+            # set opacity of background aperture
+            radSqrWaveBckgr.opacity = visOpa[int(frame)]
+            # draw the background aperture
+            radSqrWaveBckgr.draw()
 
         # set the foreground aperture
         radSqrWave.tex = visTexture[..., texTime[int(frame)]]
@@ -443,9 +455,6 @@ while clock.getTime() < totalTime:
 
         # draw frame
         myWin.flip()
-        print "rate:"
-        print rate
-        rate += 1
 
         # handle key presses each frame
         for key in event.getKeys():

@@ -8,8 +8,8 @@ Psychopy.
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import os
-from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 import numpy as np
+from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 from scipy import signal
 import config_MotLoc as cfg
 
@@ -88,7 +88,7 @@ myWin = visual.Window(
     screen=0,
     winType='pyglet',
     allowGUI=False,
-    allowStencil=True,
+    allowStencil=False,
     fullscr=True,
     monitor=moni,
     color=[0, 0, 0],
@@ -347,8 +347,6 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
-    rate = 0
-
     key = conditions[i, 0]
 
     # blank
@@ -428,9 +426,6 @@ while clock.getTime() < totalTime:
 
         # draw frame
         myWin.flip()
-        print "rate:"
-        print rate
-        rate += 1
 
         # handle key presses each frame
         for key in event.getKeys():
