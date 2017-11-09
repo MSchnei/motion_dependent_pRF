@@ -28,7 +28,7 @@ targetDist = targetDuration + 1
 nrOfCond = 3
 
 # set number of blank trials
-nrNullTrialStart = 1  # 7
+nrNullTrialStart = 7  # 7
 nrNullTrialEnd = 7
 nrNullTrialBetw = 14
 

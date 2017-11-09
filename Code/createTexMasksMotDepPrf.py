@@ -52,6 +52,14 @@ ctrlTexture[np.greater_equal(ctrlTexture, 0)] = 1
 ctrlTexture[np.less(ctrlTexture, 0)] = -1
 ctrlTexture = ctrlTexture.astype('int8')
 
+#from scipy.ndimage import gaussian_filter
+#
+#ctrlTexture = ctrlTexture.astype('float64')
+#for i in range(ctrlTexture.shape[-1]):
+#    ima = ctrlTexture[..., i].astype('float64')*100
+#    ctrlTexture[..., i] = gaussian_filter(ima, sigma=2)
+
+
 # %%  save textures (for the wedge)
 str_path_parent_up = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..'))

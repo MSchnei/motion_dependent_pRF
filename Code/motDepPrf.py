@@ -12,7 +12,6 @@ from psychopy import visual, event, core,  monitors, logging, gui, data, misc
 from scipy import signal
 import config_MotDepPrf as cfg
 
-
 # set power
 power = False
 
@@ -279,18 +278,14 @@ logFile.write('nrOfVols=' + unicode(nrOfVols) + '\n')
 logFile.write('durations=' + unicode(durations) + '\n')
 logFile.write('totalTime=' + unicode(totalTime) + '\n')
 
-# define opacity on/off cycle in ms
-lenCycStim = 300.
-lenCycRamp = 50.
-lenCycRest = 600.
 # log opacity on/off cycle in ms
-logFile.write('lenCycStim=' + unicode(lenCycStim) + '\n')
-logFile.write('lenCycRamp=' + unicode(lenCycRamp) + '\n')
-logFile.write('lenCycRest=' + unicode(lenCycRest) + '\n')
-# derive how much of a second that is
-divStim = 1000/lenCycStim
-divRamp = 1000/lenCycRamp
-divRest = 1000/lenCycRest
+logFile.write('lenCycStim=' + unicode(cfg.lenCycStim) + '\n')
+logFile.write('lenCycRamp=' + unicode(cfg.lenCycRamp) + '\n')
+logFile.write('lenCycRest=' + unicode(cfg.lenCycRest) + '\n')
+# derive how much of a second the stimlus, blank and ramp period should be
+divStim = 1000/cfg.lenCycStim
+divRamp = 1000/cfg.lenCycRamp
+divRest = 1000/cfg.lenCycRest
 
 # define arrays to cycle opacity
 cycAlt = np.hstack((
@@ -312,9 +307,10 @@ texTimeBlank = np.tile(np.repeat(np.array([0, 0]),
 texTimeFlicker = np.tile(np.repeat(np.array([0, 1]),
                                    cfg.nFrames/(cfg.cycPerSec*2)),
                          cfg.cycPerSec*2).astype('int8')
-texTimeRadial = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
-                        cfg.cycPerSec*2).astype('int8')
-
+texTimeExpd = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec),
+                      cfg.cycPerSec*2).astype('int8')
+texTimeCntr = np.tile(np.arange(cfg.nFrames/cfg.cycPerSec)[::-1],
+                      cfg.cycPerSec*2).astype('int8')
 # create clock
 clock = core.Clock()
 logging.setDefaultClock(clock)
@@ -389,7 +385,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
-        texTime = texTimeRadial
+        texTime = texTimeCntr
         # set texture
         visTexture = stimTexture
 
@@ -398,7 +394,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
-        texTime = texTimeRadial
+        texTime = texTimeExpd
         # set texture
         visTexture = stimTexture
 
@@ -408,7 +404,7 @@ while clock.getTime() < totalTime:
         # convert time to respective frame
         frame = t*cfg.nFrames
         # draw fixation grid (circles and lines)
-        fixationGrid()
+#        fixationGrid()
 
         if power:
             # set opacity of background aperture

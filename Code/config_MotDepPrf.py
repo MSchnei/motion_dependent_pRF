@@ -26,6 +26,14 @@ wedgeAngle = 60.
 # set number of repetitions (number of times the stimulus is shown)
 numRep = 4.
 
+# define opacity on/off cycle in ms
+# for stimulus
+lenCycStim = 300.
+# for raised cosine
+lenCycRamp = 50.
+# for blank rest
+lenCycRest = 600.
+
 # %% set parameters for the texture
 
 # define the spatial frequency of the radial sine wave grating
