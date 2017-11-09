@@ -78,9 +78,9 @@ for ind, indCond in enumerate(aryPerm):
     while targetSwitch:
         # prepare targets
         targetTRs = np.zeros(len(conditions)).astype('bool')
-        targetPos = np.random.choice(np.arange(4), size=len(conditions),
+        targetPos = np.random.choice(np.arange(3), size=len(conditions),
                                      replace=True,
-                                     p=np.array([0.25, 0.25, 0.25, 0.25]))
+                                     p=np.array([1/3., 1/3., 1/3.]))
         targetTRs[targetPos == 1] = True
         nrOfTargets = np.sum(targetTRs)
 

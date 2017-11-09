@@ -211,8 +211,8 @@ dotFix = visual.Circle(
     name='dotFix',
     units='deg',
     radius=0.125,
-    fillColor=[0.6, 0.0, 0.0],
-    lineColor=[0.6, 0.0, 0.0],)
+    fillColor=[1.0, -1.0, -1.0],
+    lineColor=[1.0, -1.0, -1.0])
 
 # surround of the fixation dot
 dotFixSurround = visual.Circle(
@@ -432,17 +432,17 @@ while clock.getTime() < totalTime:
             # change color fix dot
             if targetColor == 1:
                 # change color fix dot surround to brighter red
-                dotFix.fillColor = [0.2, 0.4, 0.0]
-                dotFix.lineColor = [0.2, 0.4, 0.0]
+                dotFix.fillColor = [1.0, -0.4, -0.4]
+                dotFix.lineColor = [1.0, -0.4, -0.4]
             elif targetColor == 2:
                 # change color fix dot surround to darker red
-                dotFix.fillColor = [0.2, 0.0, 0.4]
-                dotFix.lineColor = [0.2, 0.0, 0.4]
+                dotFix.fillColor = [0.4, -1.0, -1.0]
+                dotFix.lineColor = [0.4, -1.0, -1.0]
         else:
             # dont display target!
             # keep color fix dot surround yellow
-            dotFix.fillColor = [0.6, 0.0, 0.0]
-            dotFix.lineColor = [0.6, 0.0, 0.0]
+            dotFix.fillColor = [1.0, -1.0, -1.0]
+            dotFix.lineColor = [1.0, -1.0, -1.0]
 
         # draw fixation point surround
         dotFixSurround.draw()
@@ -489,7 +489,7 @@ else:
     for index, target in enumerate(targets):
         for TimeKeyPress in targetPressedArray:
             if (float(TimeKeyPress) >= float(target) and
-                    float(TimeKeyPress) <= float(target) + 2):
+                    float(TimeKeyPress) <= float(target) + 1.):
                 targetDetected[index] = 1
 
 logging.data('ArrayOfDetectedTargets' + unicode(targetDetected))

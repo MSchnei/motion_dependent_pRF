@@ -184,8 +184,8 @@ dotFix = visual.Circle(
     name='dotFix',
     units='deg',
     radius=0.125,
-    fillColor=[0.6, 0.0, 0.0],
-    lineColor=[0.6, 0.0, 0.0],)
+    fillColor=[1.0, -1.0, -1.0],
+    lineColor=[1.0, -1.0, -1.0],)
 
 # surround of the fixation dot
 dotFixSurround = visual.Circle(
@@ -407,13 +407,13 @@ while clock.getTime() < totalTime:
            targets + targetDuration) == len(targets)+1):
             # display target!
             # change color fix dot surround to red
-            dotFix.fillColor = [0.6, 0.6, 0.0]
-            dotFix.lineColor = [0.6, 0.6, 0.0]
+            dotFix.fillColor = [0.5, 0.0, -1.0]
+            dotFix.lineColor = [0.5, 0.0, -1.0]
         else:
             # dont display target!
             # keep color fix dot surround yellow
-            dotFix.fillColor = [0.6, 0.0, 0.0]
-            dotFix.lineColor = [0.6, 0.0, 0.0]
+            dotFix.fillColor = [1.0, -1.0, -1.0]
+            dotFix.lineColor = [1.0, -1.0, -1.0]
 
         # draw fixation point surround
         dotFixSurround.draw()
@@ -433,7 +433,7 @@ while clock.getTime() < totalTime:
                 logging.data(msg='Scanner trigger')
                 triggerPressedArray = np.append(triggerPressedArray,
                                                 clock.getTime())
-            elif key in ['1']:
+            elif key in ['1', '2', '3', '4']:
                 logging.data(msg='Key1 pressed')
                 targetPressedArray = np.append(targetPressedArray,
                                                clock.getTime())
@@ -457,7 +457,7 @@ else:
     for index, target in enumerate(targets):
         for TimeKeyPress in targetPressedArray:
             if (float(TimeKeyPress) >= float(target) and
-                    float(TimeKeyPress) <= float(target) + 2):
+                    float(TimeKeyPress) <= float(target) + 1.):
                 targetDetected[index] = 1
 
 logging.data('ArrayOfDetectedTargets' + unicode(targetDetected))
@@ -489,7 +489,7 @@ logFile.write(unicode(resultText) + '\n')
 logFile.write(unicode(feedbackText) + '\n')
 targetText.draw()
 myWin.flip()
-core.wait(5)
+core.wait(4)
 
 
 # %% FINISH
