@@ -72,8 +72,8 @@ radiPairs = zip(minRadi, maxRadi)
 
 # derive the angles for the wedge limits
 # add 270 to start at the desired angle
-minTheta = np.linspace(0, 360, 6, endpoint=False) + 270
-maxTheta = minTheta + 60
+minTheta = np.linspace(0, 360, cfg.numAprtCrcle, endpoint=False) + 270
+maxTheta = minTheta + cfg.wedgeAngle
 thetaPairs = zip(minTheta, maxTheta)
 
 # find all possible combinations between ring and wedge limits
@@ -93,18 +93,14 @@ for ind, combi in enumerate(combis):
 
 # %% group masks for the background together (no raised cosine)
 
-# how many aperture make one circle?
-numAprtCrcle = 6
-jumpInd = np.arange(binMasks.shape[2]).reshape((-1, numAprtCrcle))
-
-# set number of repetitions (number of times the stimulus is shows)
-n = 4
-lst = list(itertools.product([0, 1], repeat=n))
+# get an array that indexes every nth = numAprtCrcle element
+jumpInd = np.arange(binMasks.shape[2]).reshape((-1, cfg.numAprtCrcle))
+# get all possible binary states of n=cfg.numRep repetitions
+lst = list(itertools.product([0, 1], repeat=int(cfg.numRep)))
 # flatten the list of tuples and make it a numpy array
 for ind, item in enumerate(lst):
     lst[ind] = list(np.hstack(item))
 ary = np.array(lst)
-
 # set number of successes (number of times the area should be on)
 numSuc = 2
 success = np.copy(ary[np.sum(ary, axis=1) == numSuc, :])
@@ -112,7 +108,8 @@ success = np.copy(ary[np.sum(ary, axis=1) == numSuc, :])
 success = np.copy(success[[1, 5, 0, 3, 2, 4], :]).T.astype('bool')
 
 # use index to group apertures together
-opaPgDnMasks = np.empty((cfg.pix, cfg.pix, len(combis)/numAprtCrcle*n),
+opaPgDnMasks = np.empty((cfg.pix, cfg.pix,
+                         len(combis)/cfg.numAprtCrcle*cfg.numRep),
                         dtype='int8')
 for ind1, jumpIdx in enumerate(jumpInd):
     for ind2, lgc in enumerate(success):
@@ -120,7 +117,8 @@ for ind1, jumpIdx in enumerate(jumpInd):
         indices = jumpIdx[lgc]
         # use indices to get relevant apertures
         lgc = binMasks[..., indices.astype('int')]
-        opaPgDnMasks[..., ind1*n+ind2] = np.sum(lgc, axis=2).astype('bool')
+        opaPgDnMasks[..., ind1*cfg.numRep+ind2] = np.sum(lgc,
+                                                         axis=2).astype('bool')
 
 # add frame in the beginning with all zeros
 opaPgDnMasks = np.concatenate((
@@ -162,7 +160,8 @@ for ind in np.arange(opaPgUpMasks.shape[-1]):
 # %% save masks as npz array
 
 # restructure arrays such that if indexed with linspace, outward motion results
-ouwardInd = np.arange(len(combis)/numAprtCrcle*n).reshape((-1, n)).T
+ouwardInd = np.arange(len(combis)/cfg.numAprtCrcle*cfg.numRep
+                      ).reshape((-1, cfg.numRep)).T
 # add 1 to account for thew zero image in the begging
 ouwardInd = ouwardInd.flatten() + 1
 # add a zero in the beginning for the zero image

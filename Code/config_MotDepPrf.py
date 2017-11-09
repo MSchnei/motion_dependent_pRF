@@ -7,18 +7,24 @@ import numpy as np
 
 # number of expected frames per second
 nFrames = 60.
-# height of the entire field of view in deg of vis angle
-fovHeight = 17.
 # number of pixels for the entire filed of view
 pix = 1024.
+# height of the entire field of view in deg of vis angle
+fovHeight = 17.
 # set the minimum radius fo the ring/wedge
 minR = 3.4
-# size of the bar aperture in deg of vis angle
+# size of the wedge-ring aperture radial direction in deg of vis angle
 barSize = 1.7
 # by how much will the aperture step through visual field? in deg of vis angle
 stepSize = 0.34
 # border range for raised cosine ind eg of visual angle
 borderRange = 0.6
+# how many apertures make one circle?
+numAprtCrcle = 6.
+# what should be the angle of the ring-wedge
+wedgeAngle = 60.
+# set number of repetitions (number of times the stimulus is shown)
+numRep = 4.
 
 # %% set parameters for the texture
 

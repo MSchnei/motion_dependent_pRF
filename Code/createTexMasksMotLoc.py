@@ -32,7 +32,7 @@ for ind in np.arange(barTexture.shape[2]):
     im.save("/home/marian/Documents/Testing/CircleBarApertures/carrierPattern/"
             + "Ima_" + str(ind) + ".png")
 
-# assign parts of the texture to to get the bars
+# assign parts of the texture to get the bars
 horiBar = np.zeros((barTexture.shape))
 vertiBar = np.zeros((barTexture.shape))
 horiBar[0:cfg.pix/cfg.numSquaresBars, :, :] = np.copy(
