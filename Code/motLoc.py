@@ -112,13 +112,10 @@ filename = os.path.join(strPathParentUp, 'Conditions',
                         'Conditions_MotLoc_run' + str(expInfo['run']) +
                         '.npz')
 npzfile = np.load(filename)
-conditions = npzfile["conditions"].astype('int')
-targetTRs = npzfile["targetTRs"].astype('bool')
-targetOffsetSec = npzfile["targetOffsetSec"]
+conditions = npzfile["conditions"].astype('int8')
+targets = npzfile["targets"]
 targetDuration = npzfile["targetDuration"]
 expectedTR = npzfile["expectedTR"]
-targets = np.arange(0, len(conditions)*expectedTR, expectedTR)[targetTRs]
-targets = targets + targetOffsetSec
 print('TARGETS: ')
 print targets
 
@@ -132,7 +129,6 @@ positions = misc.deg2pix(positions, moni)
 
 # log conditions and targets
 logFile.write('conditions=' + unicode(conditions) + '\n')
-logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
 logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
 logFile.write('expectedTR=' + unicode(expectedTR) + '\n')
 logFile.write('targets=' + unicode(targets) + '\n')

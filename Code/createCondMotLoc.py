@@ -15,6 +15,7 @@ from utils import balancedLatinSquares
 # %% set paramters
 expectedTR = 2
 targetDuration = 0.5
+targetDist = targetDuration + 1
 
 # total number of conditions
 nrOfCond = 3
@@ -73,19 +74,25 @@ for ind, indCond in enumerate(aryPerm):
     conditions = np.vstack((presOrder, apert)).T
 
     # %% Prepare target times
+    targetSwitch = True
+    while targetSwitch:
+        # prepare targets
+        targetTRs = np.zeros(len(conditions)).astype('bool')
+        targetPos = np.random.choice(np.arange(4), size=len(conditions),
+                                     replace=True,
+                                     p=np.array([0.25, 0.25, 0.25, 0.25]))
+        targetTRs[targetPos == 1] = True
+        nrOfTargets = np.sum(targetTRs)
 
-    # prepare targets
-    targetTRs = np.zeros(len(conditions))
-    targetPos = np.random.choice(np.arange(4), size=len(conditions),
-                                 replace=True,
-                                 p=np.array([0.25, 0.25, 0.25, 0.25]))
-    targetTRs[targetPos == 1] = 1
-    nrOfTargets = np.sum(targetTRs == 1)
+        # prepare random target onset delay
+        targetOffsetSec = np.random.uniform(0.1,
+                                            expectedTR-targetDuration,
+                                            size=nrOfTargets)
 
-    # prepare random target onset delay
-    targetOffsetSec = np.random.uniform(0.1,
-                                        expectedTR-targetDuration,
-                                        size=nrOfTargets)
+        targets = np.arange(0, len(conditions)*expectedTR,
+                            expectedTR)[targetTRs]
+        targets = targets + targetOffsetSec
+        targetSwitch = np.any(np.diff(targets) < targetDist)
 
     # %% save the results
     strPathParentUp = os.path.abspath(
@@ -97,6 +104,5 @@ for ind, indCond in enumerate(aryPerm):
         filename = os.path.join(strPathParentUp, 'Conditions',
                                 'Conditions_MotLoc_run0' + str(ind+1))
     np.savez(filename, conditions=conditions.astype('int8'),
-             targetTRs=targetTRs.astype('bool'),
-             targetOffsetSec=targetOffsetSec,
-             targetDuration=targetDuration, expectedTR=expectedTR)
+             targets=targets, targetDuration=targetDuration,
+             expectedTR=expectedTR)

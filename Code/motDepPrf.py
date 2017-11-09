@@ -116,14 +116,11 @@ filename = os.path.join(strPathParentUp, 'Conditions',
                         'Conditions_MotDepPrf_run' + str(expInfo['run']) +
                         '.npz')
 npzfile = np.load(filename)
-conditions = npzfile["conditions"].astype('int')
-targetTRs = npzfile["targetTRs"].astype('bool')
-targetOffsetSec = npzfile["targetOffsetSec"]
+conditions = npzfile["conditions"].astype('int8')
+targets = npzfile["targets"]
 targetDuration = npzfile["targetDuration"]
 targetType = npzfile["targetType"]
 expectedTR = npzfile["expectedTR"]
-targets = np.arange(0, len(conditions)*expectedTR, expectedTR)[targetTRs]
-targets = targets + targetOffsetSec
 print('TARGETS: ')
 print targets
 
@@ -133,7 +130,6 @@ targetPressedArray = np.array([])
 
 # log conditions and targets
 logFile.write('conditions=' + unicode(conditions) + '\n')
-logFile.write('targetOffsetSec=' + unicode(targetOffsetSec) + '\n')
 logFile.write('targetDuration=' + unicode(targetDuration) + '\n')
 logFile.write('targetType=' + unicode(targetType) + '\n')
 logFile.write('expectedTR=' + unicode(expectedTR) + '\n')
@@ -436,12 +432,12 @@ while clock.getTime() < totalTime:
             # change color fix dot
             if targetColor == 1:
                 # change color fix dot surround to brighter red
-                dotFix.fillColor = [1.0, 0.0, 0.0]
-                dotFix.lineColor = [1.0, 0.0, 0.0]
+                dotFix.fillColor = [0.2, 0.4, 0.0]
+                dotFix.lineColor = [0.2, 0.4, 0.0]
             elif targetColor == 2:
                 # change color fix dot surround to darker red
-                dotFix.fillColor = [0.2, 0.0, 0.0]
-                dotFix.lineColor = [0.2, 0.0, 0.0]
+                dotFix.fillColor = [0.2, 0.0, 0.4]
+                dotFix.lineColor = [0.2, 0.0, 0.4]
         else:
             # dont display target!
             # keep color fix dot surround yellow

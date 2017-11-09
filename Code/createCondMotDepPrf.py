@@ -6,15 +6,23 @@ Created on Thu Jun 23 16:21:45 2016
 """
 
 from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
-import numpy as np
-import itertools
 import os
+import itertools
+import numpy as np
+import config_MotDepPrf as cfg
+
 
 # %% set paramters
-nrOfApertures = 60
+
+# derive number of apertures
+nrOfApertures = (len(np.arange(cfg.minR+cfg.stepSize-cfg.barSize,
+                               cfg.fovHeight/2., cfg.stepSize)[2:-2]) *
+                 len(np.linspace(0, 360, cfg.numAprtCrcle, endpoint=False)) /
+                 cfg.numAprtCrcle*cfg.numRep)
 
 expectedTR = 2
 targetDuration = 0.5
+targetDist = targetDuration + 1
 
 # total number of conditions
 nrOfCond = 3
@@ -71,25 +79,32 @@ for ind, indCond in enumerate(aryPerm):
     conditions2 = np.vstack((presOrder2, aperture)).T
 
     # %% Prepare target times
+    targetSwitch = True
+    while targetSwitch:
+        # prepare targets
+        targetTRs = np.zeros(len(conditions1)).astype('bool')
+        targetPos = np.random.choice(np.arange(3), size=len(conditions1),
+                                     replace=True,
+                                     p=np.array([1/3., 1/3., 1/3.]))
+        targetTRs[targetPos == 1] = True
+        nrOfTargets = np.sum(targetTRs)
 
-    # prepare targets
-    targetTRs = np.zeros(len(conditions1))
-    targetPos = np.random.choice(np.arange(3), size=len(conditions1),
-                                 replace=True,
-                                 p=np.array([0.333, 0.333, 0.334]))
-    targetTRs[targetPos == 1] = 1
-    nrOfTargets = np.sum(targetTRs == 1)
+        # prepare random target onset delay
+        targetOffsetSec = np.random.uniform(0.1,
+                                            expectedTR-targetDuration,
+                                            size=nrOfTargets)
 
-    # prepare random target onset delay
-    targetOffsetSec = np.random.uniform(0.1,
-                                        expectedTR-targetDuration,
-                                        size=nrOfTargets)
+        targets = np.arange(0, len(conditions1)*expectedTR,
+                            expectedTR)[targetTRs]
+        targets = targets + targetOffsetSec
+        targetSwitch = np.any(np.diff(targets) < targetDist)
+
     # prepare target type
     targetType = np.zeros(len(conditions1))
-    targetType[targetTRs == 1] = np.random.choice(np.array([1, 2]),
-                                                  size=nrOfTargets,
-                                                  replace=True,
-                                                  p=np.array([0.5, 0.5]))
+    targetType[targetTRs] = np.random.choice(np.array([1, 2]),
+                                             size=nrOfTargets,
+                                             replace=True,
+                                             p=np.array([0.5, 0.5]))
 
     # %% save the results
 
@@ -101,9 +116,7 @@ for ind, indCond in enumerate(aryPerm):
     else:
         filename1 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_MotDepPrf_run0' + str(2*ind+1))
-    np.savez(filename1, conditions=conditions1,
-             targetTRs=targetTRs.astype('bool'),
-             targetOffsetSec=targetOffsetSec,
+    np.savez(filename1, conditions=conditions1.astype('int8'), targets=targets,
              targetDuration=targetDuration, targetType=targetType,
              expectedTR=expectedTR)
     if 2*ind+2 > 9:
@@ -112,8 +125,6 @@ for ind, indCond in enumerate(aryPerm):
     else:
         filename2 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_MotDepPrf_run0' + str(2*ind+2))
-    np.savez(filename2, conditions=conditions2,
-             targetTRs=targetTRs.astype('bool'),
-             targetOffsetSec=targetOffsetSec,
+    np.savez(filename2, conditions=conditions2.astype('int8'), targets=targets,
              targetDuration=targetDuration, targetType=targetType,
              expectedTR=expectedTR)
