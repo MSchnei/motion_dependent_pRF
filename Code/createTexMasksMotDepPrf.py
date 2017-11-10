@@ -113,7 +113,9 @@ ary = np.array(lst)
 numSuc = 2
 success = np.copy(ary[np.sum(ary, axis=1) == numSuc, :])
 # reorder the array so that split of segments run along desired lines
-success = np.copy(success[[1, 5, 0, 3, 2, 4], :]).T.astype('bool')
+success = np.copy(success[[0, 5, 1, 4, 2, 3], :]).T.astype('bool')
+# old order (mirror along the y-axis)
+# success = np.copy(success[[1, 5, 0, 3, 2, 4], :]).T.astype('bool')
 
 # use index to group apertures together
 opaPgDnMasks = np.empty((cfg.pix, cfg.pix,
@@ -168,7 +170,7 @@ for ind in np.arange(opaPgUpMasks.shape[-1]):
 # %% save masks as npz array
 
 # restructure arrays such that if indexed with linspace, outward motion results
-ouwardInd = np.arange(len(combis)/cfg.numAprtCrcle*cfg.numRep
+ouwardInd = np.arange(len(combis)/cfg.numAprtCrcle*cfg.numRep, dtype='int32'
                       ).reshape((-1, cfg.numRep)).T
 # add 1 to account for thew zero image in the begging
 ouwardInd = ouwardInd.flatten() + 1

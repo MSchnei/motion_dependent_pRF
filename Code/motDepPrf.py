@@ -404,7 +404,8 @@ while clock.getTime() < totalTime:
         # convert time to respective frame
         frame = t*cfg.nFrames
         # draw fixation grid (circles and lines)
-#        fixationGrid()
+        if power:
+            fixationGrid()
 
         if power:
             # set opacity of background aperture
@@ -427,13 +428,14 @@ while clock.getTime() < totalTime:
             targetColor = targetType[i]
             # change color fix dot
             if targetColor == 1:
-                # change color fix dot surround to brighter red
-                dotFix.fillColor = [1.0, -0.4, -0.4]
-                dotFix.lineColor = [1.0, -0.4, -0.4]
-            elif targetColor == 2:
                 # change color fix dot surround to darker red
                 dotFix.fillColor = [0.4, -1.0, -1.0]
                 dotFix.lineColor = [0.4, -1.0, -1.0]
+            elif targetColor == 2:
+                # change color fix dot surround to brighter red
+                dotFix.fillColor = [1.0, -0.4, -0.4]
+                dotFix.lineColor = [1.0, -0.4, -0.4]
+
         else:
             # dont display target!
             # keep color fix dot surround yellow
@@ -491,15 +493,27 @@ else:
 logging.data('ArrayOfDetectedTargets' + unicode(targetDetected))
 print 'Array Of Detected Targets: ' + str(targetDetected)
 
+
 # number of detected targets
-targetsDet = sum(targetDetected)
+targetsDet = np.sum(targetDetected)
 logging.data('NumberOfDetectedTargets' + unicode(targetsDet))
 # detection ratio
 detectRatio = targetsDet/len(targetDetected)
-logging.data('RatioOfDetectedTargets' + unicode(detectRatio))
+targetTypeDetected = np.copy(targetType[targetType != 0])
+targetTypeDetected = targetTypeDetected[targetDetected.astype('bool')]
+detectRatio1 = np.sum(targetTypeDetected == 1) / np.sum(targetType == 1)
+detectRatio2 = np.sum(targetTypeDetected == 2) / np.sum(targetType == 2)
+logging.data('RatioOfTotalDetectedTargets' + unicode(detectRatio))
+logging.data('RatioOfIndrementDetectedTargets' + unicode(detectRatio1))
+logging.data('RatioOfDecrementDetectedTargets' + unicode(detectRatio2))
 
 # display target detection results to participant
 resultText = 'You detected %i out of %i targets.' % (targetsDet, len(targets))
+resultText1 = 'You detected %i out of %i target decrements.' % (
+    np.sum(targetTypeDetected == 1), np.sum(targetType == 1))
+resultText2 = 'You detected %i out of %i target increments.' % (
+    np.sum(targetTypeDetected == 2), np.sum(targetType == 2))
+
 print resultText
 logging.data(resultText)
 # also display a motivational slogan
@@ -512,7 +526,8 @@ elif detectRatio < 0.8 and detectRatio > 0.65:
 else:
     feedbackText = 'You really need to focus more!'
 
-targetText.setText(resultText+'\n'+feedbackText)
+targetText.setText(resultText + '\n' + resultText1 + '\n' + resultText2 +
+                   '\n' + feedbackText)
 logFile.write(unicode(resultText) + '\n')
 logFile.write(unicode(feedbackText) + '\n')
 targetText.draw()
