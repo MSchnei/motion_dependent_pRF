@@ -22,7 +22,7 @@ nrOfApertures = (len(np.arange(cfg.minR+cfg.stepSize-cfg.barSize,
 
 expectedTR = 2
 targetDuration = 0.5
-targetDist = targetDuration + 1
+targetDist = targetDuration + 1.2
 
 # total number of conditions
 nrOfCond = 3
