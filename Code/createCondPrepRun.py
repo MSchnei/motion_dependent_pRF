@@ -10,9 +10,9 @@ import os
 import numpy as np
 
 # %% prepare
+expectedTR = 2
 targetDuration = 0.5
-targetDist = 1.5
-expectedTR = 2.
+targetDist = targetDuration + 1.2
 
 presOrder = np.hstack((np.zeros(2),
                        np.tile(np.vstack((
@@ -38,8 +38,6 @@ apert = np.hstack((np.zeros(2),
                    ))
 
 conditions = np.vstack((presOrder, apert)).T
-
-
 
 # %% Prepare target times
 targetSwitch = True
