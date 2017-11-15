@@ -74,7 +74,7 @@ logging.console.setLevel(logging.WARNING)  # set console to receive warnings
 distanceMon = 58  # [58] in psychoph lab [99] in scanner
 widthMon = 53  # [53] in psychoph lab [30] in scanner
 PixW = 1920.0  # [1920.0] in psychopy lab [1920.0] in scanner
-PixH = 1200.0  # [1080.0] in psychoph lab [1200.0] in scanner
+PixH = 1080.0  # [1080.0] in psychoph lab [1200.0] in scanner
 
 moni = monitors.Monitor('testMonitor', width=widthMon, distance=distanceMon)
 moni.setSizePix([PixW, PixH])  # [1920.0, 1080.0] in psychoph lab
@@ -482,6 +482,7 @@ if ET:
 # %% RENDER_LOOP
 if ET:
     calibrateET(PixW, PixH, NoCP)
+
 # Create Counters
 i = 0
 # give the system time to settle
