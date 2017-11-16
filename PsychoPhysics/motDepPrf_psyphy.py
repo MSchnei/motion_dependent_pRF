@@ -488,7 +488,7 @@ while trigCount < len(conditions):
     if ET:
         # insert Start marker S into datafile to mark start of condition
         vpx.VPX_SendCommand('dataFile_InsertMarker S')
-        BlockText = 'StartOfCondition'+str(conditions[i])
+        BlockText = 'StartOfCondition'+str(conditions[trigCount])
         vpx.VPX_SendCommand('dataFile_InsertString ' + BlockText)
 
     # set switch for looop to true
@@ -636,11 +636,11 @@ while trigCount < len(conditions):
             reponsePeriod = False
 
             # set the foreground aperture
-            radSqrWaveSample.tex = visTexture1[..., texTime1[int(frame)]]
+            radSqrWaveTest.tex = visTexture1[..., texTime1[int(frame)]]
             # set opacity of background aperture
-            radSqrWaveSample.opacity = visOpa[int(frame)]
+            radSqrWaveTest.opacity = visOpa[int(frame)]
             # draw the background aperture
-            radSqrWaveSample.draw()
+            radSqrWaveTest.draw()
 
             # color of fixation red
             dotFix.fillColor = [1.0, -1.0, -1.0]
@@ -660,11 +660,11 @@ while trigCount < len(conditions):
             reponsePeriod = False
 
             # set the foreground aperture
-            radSqrWaveTest.tex = visTexture2[..., texTime2[int(frame)]]
+            radSqrWaveSample.tex = visTexture2[..., texTime2[int(frame)]]
             # set opacity of foreground aperture
-            radSqrWaveTest.opacity = visOpa[int(frame)]
+            radSqrWaveSample.opacity = visOpa[int(frame)]
             # draw the foreground aperture
-            radSqrWaveTest.draw()
+            radSqrWaveSample.draw()
 
             # color of fixation red
             dotFix.fillColor = [1.0, -1.0, -1.0]
@@ -711,8 +711,8 @@ while trigCount < len(conditions):
                     trigCount = trigCount+1
                 responsePeriod = False
                 if ET:
-                    vpx.VPX_SendCommand('dataFile_InsertMarker ' + '1')
-                    vpx.VPX_SendCommand('dataFile_InsertString ' + 'Key1')
+                    vpx.VPX_SendCommand('dataFile_InsertMarker ' + '2')
+                    vpx.VPX_SendCommand('dataFile_InsertString ' + 'Key2')
                 tloop = False
 
 
