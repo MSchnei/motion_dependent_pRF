@@ -1,5 +1,5 @@
 # motion_dependent_pRF
-Package for presenting stimuli for pRF mapping using Psychopy.
+[WIP] Package for presenting stimuli for pRF mapping using Psychopy.
 
 <img src="demoMotLoc.png" width=420 align="center" />
 
@@ -18,8 +18,8 @@ https://github.com/ingo-m/pyprf
 
 ## How to use
 
-This package includes three different stimulus sets, depending on desired purpose.
-The sets are organized into three different folders: MotLoc, MotDepPrf, PsychoPhysics
+This accumulation of scripts is WIP and includes three different stimulus sets, which will later be separated in different packages.
+The sets are organized into three different folders for now: MotLoc, MotDepPrf, PsychoPhysics
 
 1. MotLoc: Stimulation script to map visual areas (especially area hMT) using the pRF framework.
 
