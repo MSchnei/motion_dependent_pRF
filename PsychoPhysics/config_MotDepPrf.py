@@ -42,20 +42,18 @@ angularCycles = np.ceil(np.pi*fovHeight /
 cycPerSec = 5.
 
 # %%
-combis = np.array([[3, 2],  # up then down, opposite
-                   [2, 3],  # down then up, opposite
-                   [2, 2],  # down then down, same
-                   [3, 3],  # up then up, same
-                   [3, 1],  # up then stationary, up vs. stationary
-                   [1, 3],  # stationary then up, up vs. stationary
-                   [2, 1],  # down then stationary, down vs. stationary
-                   [1, 2],  # stationary then down, down vs. stationary
+combis = np.array([[1, 1],  # flicker then flicker, opposite
+                   [1, 1],  # flicker then flicker, opposite
+                   [3, 1],  # up then flicker, up vs. flicker
+                   [1, 3],  # flicker then up, up vs. flicker
+                   [2, 1],  # down then flicker, down vs. flicker
+                   [1, 2],  # flicker then down, down vs. flicker
                    ])
 
 posShifts = np.array([-0.8, -0.4, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.4,
                       0.8])
 
-ecc = np.array([4.2, 7.7])
+ecc = np.array([5.1])
 
 positions = posShifts[:, None] + ecc[None, :]
 
