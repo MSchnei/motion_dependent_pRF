@@ -502,10 +502,10 @@ while trigCount < len(conditions):
     posShiftsInd = conditions[trigCount, 1]
     eccInd = conditions[trigCount, 2]
 
-    eccTestMaskNr = np.arange(nrOfMasks
-                              ).reshape(-1, 2)[cfg.eccPositions[eccInd],
-                                               eccInd]
-    eccSampleMaskNr = np.arange(nrOfMasks).reshape(-1, 2)[posShiftsInd, eccInd]
+    eccTestMaskNr = np.arange(nrOfMasks).reshape(-1,
+        len(cfg.eccPositions))[cfg.eccPositions[eccInd], eccInd]
+    eccSampleMaskNr = np.arange(nrOfMasks).reshape(-1,
+        len(cfg.eccPositions))[posShiftsInd, eccInd]
 
     condTest = cfg.combis[combiInd][0]
     condSample = cfg.combis[combiInd][1]
@@ -516,7 +516,7 @@ while trigCount < len(conditions):
     radSqrWaveSample.mask = np.squeeze(opaPgUpMasks[:, :, eccSampleMaskNr])
 
     # blank
-    if condSample == 0 and condTest == 0:
+    if condTest == 0 and condSample == 0:
         # set timing for the opacity
         visOpa = cycTransp
         # set timing sequence for the texture
@@ -526,41 +526,19 @@ while trigCount < len(conditions):
         visTexture1 = ctrlTexture
         visTexture2 = ctrlTexture
 
-    # combi1
-    elif condSample == 1 and condTest == 2:
+    # combi 1 and 2
+    elif condTest == 1 and condSample == 1:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
         texTime1 = texTimeFlicker
-        texTime2 = texTimeCntr
-        # set texture
-        visTexture1 = ctrlTexture
-        visTexture2 = stimTexture
-
-    # combi2
-    elif condSample == 1 and condTest == 3:
-        # set timing for the opacity
-        visOpa = cycAlt
-        # set timing sequence for the texture
-        texTime1 = texTimeFlicker
-        texTime2 = texTimeExpd
-        # set texture
-        visTexture1 = ctrlTexture
-        visTexture2 = stimTexture
-
-    # combi3
-    elif condSample == 2 and condTest == 1:
-        # set timing for the opacity
-        visOpa = cycAlt
-        # set timing sequence for the texture
-        texTime1 = texTimeCntr
         texTime2 = texTimeFlicker
         # set texture
-        visTexture1 = stimTexture
+        visTexture1 = ctrlTexture
         visTexture2 = ctrlTexture
 
-    # combi4
-    elif condSample == 3 and condTest == 1:
+    # combi 3
+    elif condTest == 3 and condSample == 1:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
@@ -570,48 +548,37 @@ while trigCount < len(conditions):
         visTexture1 = stimTexture
         visTexture2 = ctrlTexture
 
-    # combi5
-    elif condSample == 2 and condTest == 2:
+    # combi 4
+    elif condTest == 1 and condSample == 3:
+        # set timing for the opacity
+        visOpa = cycAlt
+        # set timing sequence for the texture
+        texTime1 = texTimeFlicker
+        texTime2 = texTimeExpd
+        # set texture
+        visTexture1 = ctrlTexture
+        visTexture2 = stimTexture
+
+    # combi 5
+    elif condTest == 2 and condSample == 1:
         # set timing for the opacity
         visOpa = cycAlt
         # set timing sequence for the texture
         texTime1 = texTimeCntr
+        texTime2 = texTimeFlicker
+        # set texture
+        visTexture1 = stimTexture
+        visTexture2 = ctrlTexture
+
+    # combi 6
+    elif condTest == 1 and condSample == 2:
+        # set timing for the opacity
+        visOpa = cycAlt
+        # set timing sequence for the texture
+        texTime1 = texTimeFlicker
         texTime2 = texTimeCntr
         # set texture
-        visTexture1 = stimTexture
-        visTexture2 = stimTexture
-
-    # combi6
-    elif condSample == 3 and condTest == 3:
-        # set timing for the opacity
-        visOpa = cycAlt
-        # set timing sequence for the texture
-        texTime1 = texTimeExpd
-        texTime2 = texTimeExpd
-        # set texture
-        visTexture1 = stimTexture
-        visTexture2 = stimTexture
-
-    # combi7
-    elif condSample == 2 and condTest == 3:
-        # set timing for the opacity
-        visOpa = cycAlt
-        # set timing sequence for the texture
-        texTime1 = texTimeCntr
-        texTime2 = texTimeExpd
-        # set texture
-        visTexture1 = stimTexture
-        visTexture2 = stimTexture
-
-    # combi8
-    elif condSample == 3 and condTest == 2:
-        # set timing for the opacity
-        visOpa = cycAlt
-        # set timing sequence for the texture
-        texTime1 = texTimeExpd
-        texTime2 = texTimeCntr
-        # set texture
-        visTexture1 = stimTexture
+        visTexture1 = ctrlTexture
         visTexture2 = stimTexture
 
     while tloop:
