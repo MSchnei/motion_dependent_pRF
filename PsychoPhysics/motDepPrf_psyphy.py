@@ -315,10 +315,10 @@ def fixationGrid():
 """SETUP FOR EYETRACKER"""
 # eyetracker set by user?
 print(expInfo['ETused'])
-if expInfo['ETused'] == u'True':
+if expInfo['ETused']:
     print("Use eyetracker")
     ET = True
-elif expInfo['ETused'] == u'False':
+else:
     print("Decided not to use eyetracker")
     ET = False
 
