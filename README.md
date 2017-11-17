@@ -1,8 +1,11 @@
 # motion_dependent_pRF
 Package for presenting stimuli for pRF mapping using Psychopy.
 
+<img src="demoMotLoc.png" width=420 align="right" />
+
 The stimuli in this package are targeted to achieve optimal stimulation in area hMT.
 If classical pRF stimuli (flickering checkerboards in bar apertures) are desired please check out this related project:
+https://github.com/ingo-m/pyprf
 
 ## Dependencies
 [**Python 2.7**](https://www.python.org/download/releases/2.7/)
