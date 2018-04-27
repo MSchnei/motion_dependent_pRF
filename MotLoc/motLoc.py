@@ -343,7 +343,7 @@ logging.data('StartOfRun' + unicode(expInfo['run']))
 
 while clock.getTime() < totalTime:
 
-    key = conditions[i, 0]
+    keyMask = conditions[i, 0]
 
     # blank
     if conditions[i, 1] == 0:
@@ -355,24 +355,24 @@ while clock.getTime() < totalTime:
     # horibar
     elif conditions[i, 1] == 1:
         # set stimulus position
-        grating.pos = (0, positions[key-1])
+        grating.pos = (0, positions[keyMask-1])
         # set texture
         visTexture = horiBar
         # set timing for the opacity
         visOpa = cycAlt
         # set mask specific to this condition
-        grating.mask = horiBarMasks[..., key-1]
+        grating.mask = horiBarMasks[..., keyMask-1]
 
     # vertibar
     elif conditions[i, 1] == 2:
         # set stimulus position
-        grating.pos = (positions[key-1], 0)
+        grating.pos = (positions[keyMask-1], 0)
         # set texture
         visTexture = vertiBar
         # set timing for the opacity
         visOpa = cycAlt
         # set mask specific to this condition
-        grating.mask = vertiBarMasks[..., key-1]
+        grating.mask = vertiBarMasks[..., keyMask-1]
 
     # wedge
     elif conditions[i, 1] == 3:
@@ -383,7 +383,7 @@ while clock.getTime() < totalTime:
         # set timing for the opacity
         visOpa = cycAlt
         # set mask specific to this condition
-        grating.mask = wedgeMasks[..., key-1]
+        grating.mask = wedgeMasks[..., keyMask-1]
 
     while clock.getTime() < np.sum(durations[0:i+1]):
 
