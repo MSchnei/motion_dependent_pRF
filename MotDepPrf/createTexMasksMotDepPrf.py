@@ -135,12 +135,6 @@ opaPgDnMasks = np.concatenate((
     np.zeros((cfg.pix, cfg.pix)).reshape(cfg.pix, cfg.pix, 1),
     opaPgDnMasks), axis=2)
 
-# save array as images, if wanted
-for ind in np.arange(opaPgDnMasks.shape[-1]):
-    im = Image.fromarray(opaPgDnMasks[..., ind].astype(np.uint8)*255)
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/test/" +
-            "opaPgDnMasks_" + str(ind) + ".png")
-
 # %% create masks for the foreground (raised cosine) and group masks for the
 # foreground together (raised cosine)
 
@@ -161,24 +155,28 @@ for i in range(opaPgDnMasks.shape[-1]):
         # assign old contrast mask
         opaPgUpMasks[..., i] = binMask
 
-# save array as images, if wanted
-for ind in np.arange(opaPgUpMasks.shape[-1]):
-    im = Image.fromarray((255*opaPgUpMasks[..., ind]).astype(np.uint8))
-    im.save("/home/marian/Documents/Testing/CircleBarApertures/test/" +
-            "opaPgUpMasks_" + str(ind) + ".png")
-
 # %% save masks as npz array
 
 # restructure arrays such that if indexed with linspace, outward motion results
 ouwardInd = np.arange(len(combis)/cfg.numAprtCrcle*cfg.numRep, dtype='int32'
                       ).reshape((-1, cfg.numRep)).T
-# add 1 to account for thew zero image in the begging
+# add 1 to account for the zero image in the begging
 ouwardInd = ouwardInd.flatten() + 1
 # add a zero in the beginning for the zero image
 ouwardInd = np.hstack((0, ouwardInd))
 # reshape the two arrays
 opaPgDnMasks = opaPgDnMasks[..., ouwardInd]
 opaPgUpMasks = opaPgUpMasks[..., ouwardInd]
+
+# we save a version flipped along y, for later fitting of pRF models.
+# fliiping seems to be necessary since psychopy flips for display.
+opaPgDnMasksFitting = np.copy(opaPgDnMasks[::-1, ...])
+
+# save opaPgDnMasksFitting as images, if wanted
+for ind in np.arange(opaPgDnMasksFitting.shape[-1]):
+    im = Image.fromarray(opaPgDnMasksFitting[..., ind].astype(np.uint8)*255)
+    im.save("/home/usr/CircleBarApertures/" +
+            "opaPgDnMasksFitting_" + str(ind) + ".png")
 
 # for psychopy masks we need numbers in range from -1 to 1 (instead of 0 to 1)
 # -1 mean 100 % transperant (not visible) and 1 means 100 % opaque (visible)
@@ -193,4 +191,5 @@ filename = os.path.join(str_path_parent_up, 'MaskTextures',
                         'Masks_MotDepPrf')
 
 np.savez(filename, opaPgDnMasks=opaPgDnMasks.astype('int8'),
+         opaPgDnMasksFitting=opaPgDnMasksFitting.astype('int8'),
          opaPgUpMasks=opaPgUpMasks.astype('float32'))

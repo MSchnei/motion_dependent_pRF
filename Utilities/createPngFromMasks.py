@@ -11,14 +11,14 @@ import os
 
 # %% set parameters
 inPath = "/home/marian/Documents/Git/motion_dependent_pRF"
-outPath = "/media/sf_D_DRIVE/MotDepPrf/Analysis/S01/02_MotLoc/prfPngs/"
+outPath = "/media/sf_D_DRIVE/MotDepPrf/Analysis/S02/02_MotLoc/prfPngs/"
 
 # provide name of motLoc files in the order that they were shown
 lstMotLoc = [
-    "Conditions_MotLoc_run01.npz",
     "Conditions_MotLoc_run02.npz",
     "Conditions_MotLoc_run03.npz",
     "Conditions_MotLoc_run04.npz",
+    "Conditions_MotLoc_run01.npz",
     ]
 
 factorX = 8
@@ -82,12 +82,12 @@ for index in np.arange(conditions.shape[0]):
 
     im = Image.fromarray(scaleValue * ima.astype(np.uint8))
     if index > 999:
-        filename = ("frame" + '_' + str(index) + '.png')
+        filename = ("frame" + '' + str(index) + '.png')
     elif index > 99:
-        filename = ("frame" + '_0' + str(index) + '.png')
+        filename = ("frame" + '0' + str(index) + '.png')
     elif index > 9:
-        filename = ("frame" + '_00' + str(index) + '.png')
+        filename = ("frame" + '00' + str(index) + '.png')
     else:
-        filename = ("frame" + '_000' + str(index) + '.png')
+        filename = ("frame" + '000' + str(index) + '.png')
 
     im.save((os.path.join(outPath, filename)))

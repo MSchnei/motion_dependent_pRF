@@ -47,11 +47,15 @@ horiBarMasks = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
                         dtype='float16')
 horiBarShape = np.zeros((cfg.pix, cfg.pix))
 horiBarShape[0:cfg.pix/cfg.numSquaresBars, :] = 1
+horiBarMasksFitting = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
+                               dtype='float16')
 # create templates for vertical bar
 vertiBarMasks = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
                          dtype='float16')
 vertiBarShape = np.zeros((cfg.pix, cfg.pix))
 vertiBarShape[:, 0:cfg.pix/cfg.numSquaresBars] = 1
+vertiBarMasksFitting = np.zeros((cfg.pix, cfg.pix, cfg.barSteps),
+                                dtype='float16')
 # create overall circular aperture for all stimuli
 circleAperture = createBinCircleMask(cfg.fovHeight, cfg.pix, rLow=cfg.minR,
                                      rUp=cfg.fovHeight/2., thetaMin=0,
@@ -65,6 +69,8 @@ for ind, pos in enumerate(posInPix):
     ima = np.roll(horiBarShape, int(pos), axis=0).astype('bool')
     # combine with circle aperture
     ima = np.logical_and(ima, circleAperture)
+    # save inbetween result for later fitting
+    horiBarMasksFitting[:, :, ind] = ima[::-1, ...]
     # ramp the borders with a cosine function
     if np.any(ima == 1):
         print "image " + str(ind)
@@ -81,6 +87,8 @@ for ind, pos in enumerate(posInPix):
     ima = np.roll(vertiBarShape, int(pos), axis=1).astype('bool')
     # combine with circle aperture
     ima = np.logical_and(ima, circleAperture)
+    # save inbetween result for later fitting
+    vertiBarMasksFitting[:, :, ind] = ima[::-1, ...]
     # ramp the borders with a cosine function
     if np.any(ima == 1):
         print "image " + str(ind)
@@ -125,6 +133,8 @@ for ind, combi in enumerate(combis):
                                                thetaMin=combi[2],
                                                thetaMax=combi[3],
                                                rMin=cfg.minR)
+# save the wedgeMask for later fitting
+wedgeMasksFitting = np.copy(wedgeMasks[::-1, ...])
 
 # ramp the borders of wedgeMasks with a cosine function
 for i in range(wedgeMasks.shape[-1]):
@@ -163,4 +173,7 @@ np.savez(fileName, horiBar=horiBar.astype('int8'),
 fileName = os.path.join(strPathParentUp, 'MaskTextures', 'Masks_MotLoc')
 np.savez(fileName, horiBarMasks=horiBarMasks.astype('float16'),
          vertiBarMasks=vertiBarMasks.astype('float16'),
-         wedgeMasks=wedgeMasks.astype('float16'))
+         wedgeMasks=wedgeMasks.astype('float16'),
+         horiBarMasksFitting=horiBarMasksFitting.astype('int8'),
+         vertiBarMasksFitting=vertiBarMasksFitting.astype('int8'),
+         wedgeMasksFitting=wedgeMasksFitting.astype('int8'))
