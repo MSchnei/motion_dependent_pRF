@@ -6,10 +6,11 @@ Created on Thu Jun  7 10:57:13 2018
 @author: marian
 """
 
+import os
 import itertools
 import numpy as np
-from utils import (createBinCircleMask, getDistIma, crt_2D_gauss,
-                   cnvl_2D_gauss, rmp_deg_pixel_x_y_s)
+from utils import (createBinCircleMask, getDistIma, cnvl_grad_prf, cart2pol,
+                   crt_2D_gauss, cnvl_2D_gauss, rmp_deg_pixel_x_y_s)
 import matplotlib.pyplot as plt
 
 # %% Set parameters
@@ -78,26 +79,88 @@ for indIma in range(aryImaNtr.shape[-1]):
                                         pixSlct="stimAprt", borderType="left",
                                         normalize=True)
 
+for indIma in range(aryImaNtr.shape[-1]):
+    # get image
+    inputIma = aryImaNtr[..., indIma]
+    varFigName = os.path.join("/media/sf_D_DRIVE/MotDepPrf/Presentation",
+                              "figures", "Figure_prfshift",
+                              "stim_" + str(indIma) + ".svg")
+    plt.imsave(varFigName, inputIma, cmap='viridis')
+
 
 # %% Create 2d Gaussian model
-vecX = np.array([6])
+vecX = np.array([5.95])
 vecY = np.array([0])
-vecSd = np.array([1.0])
+vecSd = np.array([0.5])
 
 mdlPrms = rmp_deg_pixel_x_y_s(vecY, vecX, vecSd, (int(pix), int(pix)),
                               -fovHeight/2., fovHeight/2.,
                               -fovHeight/2., fovHeight/2.)
 mdlPrms = np.stack(mdlPrms, axis=1)
 
-prf = crt_2D_gauss(pix, pix, mdlPrms[:, 0], mdlPrms[:, 1], mdlPrms[:, 2])
+prf_ntr = crt_2D_gauss(pix, pix, mdlPrms[:, 0], mdlPrms[:, 1], mdlPrms[:, 2])
 
-nrlRspNtr = cnvl_2D_gauss(mdlPrms, aryImaNtr, (pix, pix)).T
-nrlRspOtw = cnvl_2D_gauss(mdlPrms, aryImaOtw, (pix, pix)).T
-nrlRspInw = cnvl_2D_gauss(mdlPrms, aryImaInw, (pix, pix)).T
+# %% apply gradient tp prf
+gridX, gridY = np.meshgrid(np.linspace(-pix/2., pix/2., pix, endpoint=False),
+                           np.linspace(-pix/2., pix/2., pix, endpoint=False))
 
-x = np.arange(len(nrlRspNtr))
-plt.plot(x, nrlRspNtr, x, nrlRspOtw, x, nrlRspInw, linewidth=2)
+_, gridRad = cart2pol(gridX, gridY)
 
-plt.legend(['neutral', 'rightward', 'leftward'], fontsize=16,
+gradOtw = np.copy(np.ones(gridRad.shape)*gridRad.max() - gridRad)
+gradInw = np.copy(gridRad)
+
+gradOtw = np.divide(gradOtw, np.sum(gradOtw, axis=(0, 1)))
+gradInw = np.divide(gradInw, np.sum(gradInw, axis=(0, 1)))
+
+prf_otw = cnvl_grad_prf(prf_ntr, gradOtw, Normalize=True)
+prf_inw = cnvl_grad_prf(prf_ntr, gradInw, Normalize=True)
+
+# %% save new prfs to disk
+fig, ax = plt.subplots()
+cax = plt.imshow(prf_otw, cmap="viridis")
+varFigName = os.path.join("/media/sf_D_DRIVE/MotDepPrf/Presentation/figures",
+                          "Figure_prfshift", "prf_otw" + ".svg")
+
+cbar = fig.colorbar(cax,
+                    ticks=[prf_otw.min(), prf_otw.max()/2., prf_otw.max()],
+                    orientation='horizontal')
+cbar.ax.set_xticklabels(['Low', 'Medium', 'High'])  # horizontal colorbar
+
+fig.savefig(varFigName,
+            dpi=400,
+            facecolor='w',
+            edgecolor='w',
+            orientation='portrait',
+            papertype='a0',
+            transparent=False,
+            frameon=None,
+            bbox_inches="tight",
+            )
+
+# %% calculate neural responses
+
+nrlRspNtr = cnvl_2D_gauss(prf_ntr, aryImaNtr, (pix, pix)).T
+nrlRspOtw = cnvl_2D_gauss(prf_otw, aryImaNtr, (pix, pix)).T
+nrlRspInw = cnvl_2D_gauss(prf_inw, aryImaNtr, (pix, pix)).T
+
+# define x positions
+x = minRadi + barSize/2.
+print("simulated prf responses")
+fig, ax = plt.subplots()
+ax.set_color_cycle(['#d95f02', '#7570b3', '#1b9e77'])
+plt.plot(x, nrlRspNtr, x, nrlRspOtw, x, nrlRspInw, linewidth=3)
+plt.legend(['neutral', 'outward', 'inward'], fontsize=16,
            loc='center left', bbox_to_anchor=(1, 0.5))
-plt.show()
+
+varFigName = os.path.join("/media/sf_D_DRIVE/MotDepPrf/Presentation/figures",
+                          "Figure_prfshift", "neural_responses" + ".svg")
+fig.savefig(varFigName,
+            dpi=400,
+            facecolor='w',
+            edgecolor='w',
+            orientation='portrait',
+            papertype='a0',
+            transparent=False,
+            frameon=None,
+            bbox_inches="tight",
+            )

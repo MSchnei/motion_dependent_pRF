@@ -13,6 +13,10 @@ from scipy import signal
 import config_MotDepPrf as cfg
 from ctypes import *  # for eyetracker
 
+# %% SET CONTRAST
+
+#contrastVal = [0.02, 0.02, 0.02]  # contrast: 5%
+contrastVal = [0.18, 0.18, 0.18]  # contrast: 50%
 
 # %% SAVING and LOGGING
 
@@ -132,6 +136,9 @@ filename = os.path.join(strPathParentUp, 'MaskTextures',
 npzfile = np.load(filename)
 stimTexture = npzfile["stimTexture"].astype('int8')
 ctrlTexture = npzfile["ctrlTexture"].astype('int8')
+# redefine the control flicker
+ctrlTexture[..., 0] = np.copy(stimTexture[..., 0])
+ctrlTexture[..., 1] = np.copy(stimTexture[..., 0]) * -1
 
 # retrieve the different masks
 filename = os.path.join(strPathParentUp, 'MaskTextures',
@@ -153,7 +160,7 @@ radSqrWaveTest = visual.GratingStim(
     sf=None,
     ori=0.0,
     phase=(0.0, 0.0),
-    color=(1.0, 1.0, 1.0),
+    color=contrastVal,
     colorSpace='rgb',
     contrast=1.0,
     opacity=1.0,
@@ -175,7 +182,7 @@ radSqrWaveSample = visual.GratingStim(
     sf=None,
     ori=0.0,
     phase=(0.0, 0.0),
-    color=(1.0, 1.0, 1.0),
+    color=contrastVal,
     colorSpace='rgb',
     contrast=1.0,
     opacity=1.0,

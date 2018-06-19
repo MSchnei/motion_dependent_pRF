@@ -385,13 +385,13 @@ def rmp_deg_pixel_x_y_s(vecX, vecY, vecPrfSd, tplPngSize,
     return vecXpxl, vecYpxl, vecPrfSdpxl
 
 
-def cnvl_2D_gauss(aryMdlParamsChnk, arySptExpInf, tplPngSize):
+def cnvl_2D_gauss(aryGauss, arySptExpInf, tplPngSize):
     """Spatially convolve input with 2D Gaussian model.
 
     Parameters
     ----------
-    aryMdlParamsChnk : 2d numpy array, shape [n_models, n_model_params]
-        Array with the model parameter combinations for this chunk.
+    aryGauss : 2d numpy array, shape [tplPngSize]
+        Array with the prf model.
     arySptExpInf : 3d numpy array, shape [n_x_pix, n_y_pix, n_conditions]
         All spatial conditions stacked along second axis.
     tplPngSize : tuple, 2.
@@ -404,39 +404,26 @@ def cnvl_2D_gauss(aryMdlParamsChnk, arySptExpInf, tplPngSize):
     ---------
     [1]
     """
-    # Number of combinations of model parameters in the current chunk:
-    varChnkSze = aryMdlParamsChnk.shape[0]
-
-    # Number of conditions / time points of the input data
-    varNumLstAx = arySptExpInf.shape[-1]
-
-    # Output array with results of convolution:
-    aryOut = np.zeros((varChnkSze, varNumLstAx))
-
-    # Loop through combinations of model parameters:
-    for idxMdl in range(0, varChnkSze):
-
-        # Spatial parameters of current model:
-        varTmpX = aryMdlParamsChnk[idxMdl, 0]
-        varTmpY = aryMdlParamsChnk[idxMdl, 1]
-        varTmpSd = aryMdlParamsChnk[idxMdl, 2]
-
-        # Create pRF model (2D):
-        aryGauss = crt_2D_gauss(tplPngSize[0],
-                                tplPngSize[1],
-                                varTmpX,
-                                varTmpY,
-                                varTmpSd)
-
+    if aryGauss.ndim == 3:
+        # Multiply pixel-time courses with Gaussian pRF models:
+        aryCndTcTmp = np.multiply(arySptExpInf, aryGauss)
+    elif aryGauss.ndim == 2:
         # Multiply pixel-time courses with Gaussian pRF models:
         aryCndTcTmp = np.multiply(arySptExpInf, aryGauss[:, :, None])
 
-        # Calculate sum across x- and y-dimensions - the 'area under the
-        # Gaussian surface'.
-        aryCndTcTmp = np.sum(aryCndTcTmp, axis=(0, 1))
+    # Calculate sum across x- and y-dimensions - the 'area under the
+    # Gaussian surface'.
+    aryCndTcTmp = np.sum(aryCndTcTmp, axis=(0, 1))
 
-        # Put model time courses into function's output with 2d Gaussian
-        # arrray:
-        aryOut[idxMdl, :] = aryCndTcTmp
+    return aryCndTcTmp
 
-    return aryOut
+
+def cnvl_grad_prf(prf_old, grad, Normalize=True):
+
+    prf_new = prf_old * grad
+
+    if Normalize:
+        varOldSum = np.sum(prf_old, axis=(0, 1))
+        prf_new = np.divide(prf_new, np.sum(prf_new, axis=(0, 1))) * varOldSum
+
+    return prf_new
