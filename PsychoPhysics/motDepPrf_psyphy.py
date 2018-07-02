@@ -15,8 +15,8 @@ from ctypes import *  # for eyetracker
 
 # %% SET CONTRAST
 
-#contrastVal = [0.02, 0.02, 0.02]  # contrast: 5%
-contrastVal = [0.18, 0.18, 0.18]  # contrast: 50%
+contrastVal = [0.02, 0.02, 0.02]  # contrast: 5%
+# contrastVal = [0.18, 0.18, 0.18]  # contrast: 50%
 
 # %% SAVING and LOGGING
 
@@ -25,6 +25,7 @@ expName = 'psychophycis_motDepPrf'  # set experiment name here
 expInfo = {
     u'participant': u'pilot',
     u'run': u'01',
+    u'flicker': [False, True],
     u'ETused': [False, True]
     }
 # Create GUI at the beginning of exp to get more expInfo
@@ -135,10 +136,13 @@ filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Textures_Psychophysics.npz')
 npzfile = np.load(filename)
 stimTexture = npzfile["stimTexture"].astype('int8')
-ctrlTexture = npzfile["ctrlTexture"].astype('int8')
-# redefine the control flicker
-ctrlTexture[..., 0] = np.copy(stimTexture[..., 0])
-ctrlTexture[..., 1] = np.copy(stimTexture[..., 0]) * -1
+if expInfo['flicker']:
+    # load predefined angular flicker
+    ctrlTexture = npzfile["ctrlTexture"].astype('int8')
+else:
+    # create counter-phase flicker by redefining the control flicker
+    ctrlTexture[..., 0] = np.copy(stimTexture[..., 0])
+    ctrlTexture[..., 1] = np.copy(stimTexture[..., 0]) * -1
 
 # retrieve the different masks
 filename = os.path.join(strPathParentUp, 'MaskTextures',
