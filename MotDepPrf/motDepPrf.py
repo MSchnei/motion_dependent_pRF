@@ -22,6 +22,7 @@ expName = 'motDepPrf'  # set experiment name here
 expInfo = {
     u'participant': u'pilot',
     u'run': u'01',
+    u'flicker': [False, True],
     }
 # Create GUI at the beginning of exp to get more expInfo
 dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
@@ -145,7 +146,14 @@ filename = os.path.join(strPathParentUp, 'MaskTextures',
                         'Textures_MotDepPrf.npz')
 npzfile = np.load(filename)
 stimTexture = npzfile["stimTexture"].astype('int8')
-ctrlTexture = npzfile["ctrlTexture"].astype('int8')
+
+if expInfo['flicker']:
+    # load predefined angular flicker
+    ctrlTexture = npzfile["ctrlTexture"].astype('int8')
+else:
+    # create counter-phase flicker by redefining the control flicker
+    ctrlTexture[..., 0] = np.copy(stimTexture[..., 0])
+    ctrlTexture[..., 1] = np.copy(stimTexture[..., 0]) * -1
 
 # retrieve the different masks
 filename = os.path.join(strPathParentUp, 'MaskTextures',
