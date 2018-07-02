@@ -33,11 +33,11 @@ conditions = np.array(conditions)
 
 
 # %% save the results
-for i in range(8):
+for i in range(12):
     np.random.shuffle(conditions)
     strPathParentUp = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..'))
-    if i > 9:
+    if i > 9-1:
         filename1 = os.path.join(strPathParentUp, 'Conditions',
                                  'Conditions_Psychophysics_run' + str(i+1))
     else:
