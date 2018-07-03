@@ -253,6 +253,84 @@ def raisedCos(steps, T=0.5, beta=0.5):
     return hf
 
 
+def randomizePresOrder(nrOfApertures, numRep, trialDist):
+    """Generate trials in randomized order with particular distance.
+    Parameters
+    ----------
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    trialDist : int, positive
+        The minimum distance between two neighboring trials
+    Returns
+    -------
+    trials : np.array, [numRep, nrOfApertures]
+        array with randomized trial order
+    """
+    trialSwitch = True
+    while trialSwitch:
+        # prepare presentation order
+        trials = np.tile(np.linspace(1, nrOfApertures, nrOfApertures),
+                         (numRep, 1))
+        # shuffle every row independetly
+        idx = np.argsort(np.random.random(trials.shape), axis=1)
+        trials = trials[np.arange(trials.shape[0])[:, None], idx]
+        # check whether any difference between neighbors is smaller than
+        # trialDist. If so, continue the loop, if not interrupt
+        trialSwitch = np.invert(
+            np.all(np.all(np.abs(np.diff(trials)) >= trialDist, axis=1)))
+
+    # turn trial numbers into unique condition identifiers
+    trials = trials + (nrOfApertures * np.arange(numRep))[:, None]
+
+    return trials
+
+
+def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
+                     nrNullTrialEnd, nrOfApertures, numRep, trialDist):
+    """Arrange presentation order by adding blank trials and randomized blocks.
+    Parameters
+    ----------
+    nrOfCond : int, positive
+        Number of "hyper" conditions, here: the number of motion conditions
+    nrNullTrialStart : int, positive
+        Number of blank trials in the beginning
+    nrNullTrialBetw : int, positive
+        Number of blank trials in-between
+    nrNullTrialEnd : int, positive
+        Number of blank trials in the end
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    trialDist : int, positive
+        The minimum distance between two neighboring trials
+    Returns
+    -------
+    trials : np.array, [numRep, nrOfApertures]
+        array with randomized trial order
+    """
+    # initialize array for presentation order
+    presOrder = np.array([])
+    # add initial blank period
+    presOrder = np.hstack((presOrder, np.zeros(nrNullTrialStart)))
+    # loop over conditions to add randomized presentation of aperture order
+    for ind in np.arange(nrOfCond):
+        # get randomized presentation of aperture order
+        randpresOrder = randomizePresOrder(nrOfApertures,
+                                           numRep, trialDist).flatten()
+        # add barApertures
+        presOrder = np.hstack((presOrder, randpresOrder))
+        if ind in np.arange(nrOfCond)[:-1]:
+            # add inbetween blank period
+            presOrder = np.hstack((presOrder, np.zeros(nrNullTrialBetw)))
+    # add ending blank period
+    presOrder = np.hstack((presOrder, np.zeros(nrNullTrialEnd)))
+
+    return presOrder
+
+
 def balancedLatinSquares(n):
     """Create balanced latin square for (incomplete) counterbalanced designs.
     Parameters
