@@ -20,11 +20,11 @@ stepSize = 0.34
 # border range for raised cosine ind eg of visual angle
 borderRange = 0.6
 # how many apertures make one circle?
-numAprtCrcle = 6.
+numAprtCrcle = 6
 # what should be the angle of the ring-wedge
 wedgeAngle = 60.
 # set number of repetitions (number of times the stimulus is shown)
-numRep = 4.
+numRep = 4
 
 # define opacity on/off cycle in ms
 # for stimulus
