@@ -4,6 +4,7 @@ Created on Mon Oct 30 18:53:04 2017
 
 @author: marian
 """
+import itertools
 import numpy as np
 from scipy import spatial, signal
 
@@ -308,8 +309,8 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
         The minimum distance between two neighboring trials
     Returns
     -------
-    trials : np.array, [numRep, nrOfApertures]
-        array with randomized trial order
+    presOrder : np.array
+        Array with presentation order including blank trials
     """
     # initialize array for presentation order
     presOrder = np.array([])
@@ -329,6 +330,93 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
     presOrder = np.hstack((presOrder, np.zeros(nrNullTrialEnd)))
 
     return presOrder
+
+
+def arrangeHyperCondOrder(nrOfHyperCond, nrNullTrialStart, nrNullTrialBetw,
+                          nrNullTrialEnd, nrOfApertures, numRep):
+    """Arrange presentation order of hyper conditions by adding blank trials.
+    Parameters
+    ----------
+    nrOfHyperCond : int, positive
+        Number of "hyper" conditions, here: the number of motion conditions
+    nrNullTrialStart : int, positive
+        Number of blank trials in the beginning
+    nrNullTrialBetw : int, positive
+        Number of blank trials in-between
+    nrNullTrialEnd : int, positive
+        Number of blank trials in the end
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    Returns
+    -------
+    lstHyperCond : list
+        List containing arrays with hyper conditions
+    """
+    # get all possible combination orders of elements [1, 2, 3],
+    # representing flicker, expanding or contracting motion
+    lst = list(itertools.permutations(np.arange(nrOfHyperCond)+1,
+                                      nrOfHyperCond))
+    for ind, item in enumerate(lst):
+        lst[ind] = list(np.hstack(item))
+    hyperCondCombis = np.array(lst)
+
+    # loop over all possible combinations of hyper conditions to arrange
+    # identifiers in line with blank trials
+    lstHyperCond = []
+    for hyperCondSeq in hyperCondCombis:
+        # initialize array for hyperCondOrder order
+        hyperCondOrder = np.array([])
+        # add initial blank period
+        hyperCondOrder = np.hstack((hyperCondOrder,
+                                    np.zeros(nrNullTrialStart)))
+        # loop over hyper condition combination to add hyper condition
+        # identifier
+        for indHyperCond, hyperCond in enumerate(hyperCondSeq):
+            # add hyper condition identifier
+            condInd = np.ones(nrOfApertures*numRep)*hyperCond
+            hyperCondOrder = np.hstack((hyperCondOrder, condInd))
+            if indHyperCond in np.arange(nrOfHyperCond)[:-1]:
+                # add inbetween blank period
+                hyperCondOrder = np.hstack((hyperCondOrder,
+                                            np.zeros(nrNullTrialBetw)))
+        # add ending blank period
+        hyperCondOrder = np.hstack((hyperCondOrder, np.zeros(nrNullTrialEnd)))
+        # add this hyperCondOrder to the list
+        lstHyperCond.append(hyperCondOrder)
+
+    return lstHyperCond
+
+
+def prepareTargets(condLen, expectedTR, targetDuration, targetDist):
+    """Prepare target timing and target types."""
+    targetSwitch = True
+    while targetSwitch:
+        # prepare targets
+        targetTRs = np.zeros(condLen).astype('bool')
+        targetPos = np.random.choice(np.arange(3), size=condLen,
+                                     replace=True,
+                                     p=np.array([1/3., 1/3., 1/3.]))
+        targetTRs[targetPos == 1] = True
+        nrOfTargets = np.sum(targetTRs)
+
+        # prepare random target onset delay
+        targetOffsetSec = np.random.uniform(0.1,
+                                            expectedTR-targetDuration,
+                                            size=nrOfTargets)
+
+        targets = np.arange(0, condLen*expectedTR, expectedTR)[targetTRs]
+        targets = targets + targetOffsetSec
+        targetSwitch = np.any(np.diff(targets) < targetDist)
+
+    # prepare target type
+    targetType = np.zeros(condLen)
+    targetType[targetTRs] = np.random.choice(np.array([1, 2]),
+                                             size=nrOfTargets,
+                                             replace=True,
+                                             p=np.array([0.5, 0.5]))
+    return targets, targetType
 
 
 def balancedLatinSquares(n):
