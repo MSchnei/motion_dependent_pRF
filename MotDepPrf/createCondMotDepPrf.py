@@ -15,12 +15,11 @@ import config_MotDepPrf as cfg
 # %% set paramters
 
 # derive number of apertures
-nrOfApertures = (len(np.arange(cfg.minR+cfg.stepSize-cfg.barSize,
-                               cfg.fovHeight/2., cfg.stepSize)[2:-2]) *
-                 len(np.linspace(0, 360, cfg.numAprtCrcle, endpoint=False)) /
-                 cfg.numAprtCrcle*cfg.numRep)
+nrOfApertures = len(np.arange(cfg.minR+cfg.stepSize-cfg.barSize,
+                              cfg.fovHeight/2., cfg.stepSize)[2:-2])
 
-expectedTR = 2
+
+expectedTR = 2.
 targetDuration = 0.5
 targetDist = targetDuration + 1.2
 
@@ -32,29 +31,42 @@ nrNullTrialStart = 7  # 7
 nrNullTrialEnd = 7
 nrNullTrialBetw = 14
 
-# %% prepare
+# set trial distance
+trialDist = 2
 
-# prepare vectors for presentation order
-barApertures = np.linspace(1, nrOfApertures, nrOfApertures)
+# %% prepare presentation order for different apertures
+
+# create differences that are all larger than 5 (to avoid overlap)
+trialSwitch = True
+while trialSwitch:
+    # prepare presentation order
+    trials = np.tile(np.linspace(1, nrOfApertures, nrOfApertures),
+                     (cfg.numRep, 1))
+    # shuffle every row independetly
+    idx = np.argsort(np.random.random(trials.shape), axis=1)
+    trials = trials[np.arange(trials.shape[0])[:, None], idx]
+    # check whether any difference between neighbors is smaller than trialDist
+    # if so, continue the loop, if not interrupt
+    trialSwitch = np.invert(np.all(np.all(np.abs(np.diff(trials)) >= trialDist,
+                                          axis=1)))
+
+# turn trial numbers into unique condition identifiers
+trials = trials + (nrOfApertures * np.arange(cfg.numRep))[:, None]
+barApertures = trials.flatten()
+
+
+# %% prepare vectors for presentation order
 
 # prepare modules of presentation order
-presOrder1 = np.hstack((np.zeros(nrNullTrialStart),
-                        barApertures,
-                        np.zeros(nrNullTrialBetw),
-                        barApertures,
-                        np.zeros(nrNullTrialBetw),
-                        barApertures,
-                        np.zeros(nrNullTrialEnd),
-                        ))
+presOrder = np.hstack((np.zeros(nrNullTrialStart),
+                       barApertures,
+                       np.zeros(nrNullTrialBetw),
+                       barApertures,
+                       np.zeros(nrNullTrialBetw),
+                       barApertures,
+                       np.zeros(nrNullTrialEnd),
+                       ))
 
-presOrder2 = np.hstack((np.zeros(nrNullTrialStart),
-                        barApertures[::-1],
-                        np.zeros(nrNullTrialBetw),
-                        barApertures[::-1],
-                        np.zeros(nrNullTrialBetw),
-                        barApertures[::-1],
-                        np.zeros(nrNullTrialEnd),
-                        ))
 
 # prepare to indicate weather flicker, expanding or contracting motion
 # counterbalance occurance of
@@ -66,17 +78,16 @@ aryPerm = np.array(lst)
 # loop through combinations
 for ind, indCond in enumerate(aryPerm):
     aperture = np.hstack((np.zeros(nrNullTrialStart),
-                          np.ones(nrOfApertures)*indCond[0],
+                          np.ones(nrOfApertures*cfg.numRep)*indCond[0],
                           np.zeros(nrNullTrialBetw),
-                          np.ones(nrOfApertures)*indCond[1],
+                          np.ones(nrOfApertures*cfg.numRep)*indCond[1],
                           np.zeros(nrNullTrialBetw),
-                          np.ones(nrOfApertures)*indCond[2],
+                          np.ones(nrOfApertures*cfg.numRep)*indCond[2],
                           np.zeros(nrNullTrialEnd),
                           ))
 
     # concatenate presOrder and aperture
-    conditions1 = np.vstack((presOrder1, aperture)).T
-    conditions2 = np.vstack((presOrder2, aperture)).T
+    conditions = np.vstack((presOrder, aperture)).T
 
     # %% Prepare target times
     targetSwitch = True
