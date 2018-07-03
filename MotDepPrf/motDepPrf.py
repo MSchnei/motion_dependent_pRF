@@ -152,6 +152,7 @@ if expInfo['flicker']:
     ctrlTexture = npzfile["ctrlTexture"].astype('int8')
 else:
     # create counter-phase flicker by redefining the control flicker
+    ctrlTexture = np.empty((stimTexture.shape[:-1] + (2,)))
     ctrlTexture[..., 0] = np.copy(stimTexture[..., 0])
     ctrlTexture[..., 1] = np.copy(stimTexture[..., 0]) * -1
 

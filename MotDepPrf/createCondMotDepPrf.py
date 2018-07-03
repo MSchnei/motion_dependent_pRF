@@ -18,7 +18,6 @@ import config_MotDepPrf as cfg
 nrOfApertures = len(np.arange(cfg.minR+cfg.stepSize-cfg.barSize,
                               cfg.fovHeight/2., cfg.stepSize)[2:-2])
 
-
 expectedTR = 2.
 targetDuration = 0.5
 targetDist = targetDuration + 1.2
@@ -32,11 +31,15 @@ nrNullTrialEnd = 7
 nrNullTrialBetw = 14
 
 # set trial distance
-trialDist = 2
+trialDist = 5
 
 # %% prepare presentation order for different apertures
 
 # create differences that are all larger than 5 (to avoid overlap)
+import time
+
+startTime = time.time()
+
 trialSwitch = True
 while trialSwitch:
     # prepare presentation order
@@ -49,6 +52,9 @@ while trialSwitch:
     # if so, continue the loop, if not interrupt
     trialSwitch = np.invert(np.all(np.all(np.abs(np.diff(trials)) >= trialDist,
                                           axis=1)))
+
+elapsedTime = time.time() - startTime
+
 
 # turn trial numbers into unique condition identifiers
 trials = trials + (nrOfApertures * np.arange(cfg.numRep))[:, None]
@@ -93,8 +99,8 @@ for ind, indCond in enumerate(aryPerm):
     targetSwitch = True
     while targetSwitch:
         # prepare targets
-        targetTRs = np.zeros(len(conditions1)).astype('bool')
-        targetPos = np.random.choice(np.arange(3), size=len(conditions1),
+        targetTRs = np.zeros(len(conditions)).astype('bool')
+        targetPos = np.random.choice(np.arange(3), size=len(conditions),
                                      replace=True,
                                      p=np.array([1/3., 1/3., 1/3.]))
         targetTRs[targetPos == 1] = True
@@ -105,13 +111,13 @@ for ind, indCond in enumerate(aryPerm):
                                             expectedTR-targetDuration,
                                             size=nrOfTargets)
 
-        targets = np.arange(0, len(conditions1)*expectedTR,
+        targets = np.arange(0, len(conditions)*expectedTR,
                             expectedTR)[targetTRs]
         targets = targets + targetOffsetSec
         targetSwitch = np.any(np.diff(targets) < targetDist)
 
     # prepare target type
-    targetType = np.zeros(len(conditions1))
+    targetType = np.zeros(len(conditions))
     targetType[targetTRs] = np.random.choice(np.array([1, 2]),
                                              size=nrOfTargets,
                                              replace=True,
@@ -121,21 +127,21 @@ for ind, indCond in enumerate(aryPerm):
 
     strPathParentUp = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..'))
-    if 2*ind+1 > 9:
+    if ind+1 > 9:
         filename1 = os.path.join(strPathParentUp, 'Conditions',
-                                 'Conditions_MotDepPrf_run' + str(2*ind+1))
+                                 'Conditions_MotDepPrf_run' + str(ind+1))
     else:
         filename1 = os.path.join(strPathParentUp, 'Conditions',
-                                 'Conditions_MotDepPrf_run0' + str(2*ind+1))
-    np.savez(filename1, conditions=conditions1.astype('int8'), targets=targets,
+                                 'Conditions_MotDepPrf_run0' + str(ind+1))
+    np.savez(filename1, conditions=conditions.astype('int8'), targets=targets,
              targetDuration=targetDuration, targetType=targetType,
              expectedTR=expectedTR)
-    if 2*ind+2 > 9:
-        filename2 = os.path.join(strPathParentUp, 'Conditions',
-                                 'Conditions_MotDepPrf_run' + str(2*ind+2))
-    else:
-        filename2 = os.path.join(strPathParentUp, 'Conditions',
-                                 'Conditions_MotDepPrf_run0' + str(2*ind+2))
-    np.savez(filename2, conditions=conditions2.astype('int8'), targets=targets,
-             targetDuration=targetDuration, targetType=targetType,
-             expectedTR=expectedTR)
+
+# %% correlation module
+targetCorr = 0.1
+corrSwitch = True
+while corrSwitch:
+    timeCourses = np.random.random((3*60, 222*12))
+    corrMatrix = np.corrcoef(timeCourses)
+    corrMatrixHalf = corrMatrix[np.triu_indices_from(corrMatrix, k=1)]
+    corrSwitch = np.invert(np.all(np.less(corrMatrixHalf, targetCorr)))
