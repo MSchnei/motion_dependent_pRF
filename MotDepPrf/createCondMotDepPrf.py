@@ -9,8 +9,8 @@ from __future__ import division  # so that 1/3=0.333 instead of 1/3=0
 import os
 import numpy as np
 import config_MotDepPrf as cfg
-from utils import arrangePresOrder, arrangeHyperCondOrder, prepareTargets
-from scipy.stats import gamma
+from utils import (arrangePresOrder, arrangeHyperCondOrder, prepareTargets,
+                   funcHrf)
 
 # %% set paramters
 
@@ -36,120 +36,111 @@ nrNullTrialBetw = 14
 # set trial distance
 trialDist = 2
 
-# %% prepare presentation order for apetrtures and hyper conditions
+# set number of attempts over which the script should try to minimize the
+# correlation between conditions
+numAtt = 100
 
-# get hyper conditions order, which here means
+# %% try to minimize the cxorrelation between conditions
+
+# prepare variable that can store the temporary correlation value
+varCorrTmpWnr = 1.0
+
+# get hyper conditions order, which here means different oders of
+# flicker, outward and inward motion
 lstHyperCond = arrangeHyperCondOrder(nrOfCond, nrNullTrialStart,
                                      nrNullTrialBetw, nrNullTrialEnd,
                                      nrOfApertures, cfg.numRep)
 
-# get presentation order of apertures
-presOrder = arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
-                             nrNullTrialEnd, nrOfApertures, cfg.numRep,
-                             trialDist)
-
+# get the number of possible combinations of all the hyper conditions
 nrOfHyperCombis = len(lstHyperCond)
 
-# %% concatenating presOrder and hyperCondOrder
-lstCnd = []
-for ind in np.arange(nrRuns):
+for att in np.arange(numAtt):
 
-    # get hyper condition order
-    hyperCondOrder = lstHyperCond[ind % nrOfHyperCombis]
-    # create conditions by concatenating presOrder and hyperCondOrder
-    conditions = np.vstack((presOrder, hyperCondOrder)).T
-    # add to a list
-    lstCnd.append(conditions)
+    # %% get presentation order of apertures
+    presOrder = arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
+                                 nrNullTrialEnd, nrOfApertures, cfg.numRep,
+                                 trialDist)
 
-condAllRuns = np.vstack(lstCnd)
+    # %% concatenating presOrder and hyperCondOrder
+    lstCnd = []
+    for ind in np.arange(nrRuns):
 
-# %% Remap conditions into space of continuous, unique cond numbers
+        # get hyper condition order
+        hyperCondOrder = lstHyperCond[ind % nrOfHyperCombis]
+        # create conditions by concatenating presOrder and hyperCondOrder
+        conditions = np.vstack((presOrder, hyperCondOrder)).T
+        # add to a list
+        lstCnd.append(conditions)
 
-# arySptCond is remapped into into space of continuous, unique cond numbers
-condRmp = np.empty((len(condAllRuns),))
+    condAllRuns = np.vstack(lstCnd)
 
-# get the condition nr
-condRmp = condAllRuns[:, 0] + condAllRuns[:, 1] * np.max(condAllRuns[:, 0])
+    # %% Remap conditions into space of continuous, unique cond numbers
 
-# get remapping to continuous numbers
-aryFrm = np.unique(condRmp)
-aryTo = np.argsort(np.unique(condRmp))
+    # arySptCond is remapped into into space of continuous, unique cond numbers
+    condRmp = np.empty((len(condAllRuns),))
 
-# apply mapping
-condRmp = np.array(
-    [aryTo[aryFrm == i][0] for i in condRmp])
+    # get the condition nr
+    condRmp = condAllRuns[:, 0] + condAllRuns[:, 1] * np.max(condAllRuns[:, 0])
 
-# %% create neural responses
-uniqueCond = np.unique(condRmp)
-uniqueCond = uniqueCond[uniqueCond > 0]
+    # get remapping to continuous numbers
+    aryFrm = np.unique(condRmp)
+    aryTo = np.argsort(np.unique(condRmp))
 
-nrlTc = np.zeros((len(uniqueCond), len(condRmp)))
-for ind, uniCond in enumerate(uniqueCond):
-    indPos = np.where(condRmp == uniCond)[0]
-    nrlTc[ind, indPos] = 1
+    # apply mapping
+    condRmp = np.array(
+        [aryTo[aryFrm == i][0] for i in condRmp])
 
+    # %% create neural responses
+    uniqueCond = np.unique(condRmp)
+    uniqueCond = uniqueCond[uniqueCond > 0]
 
-# %% convolve with hrf function
-def funcHrf(varNumVol, varTr):
-    """Create double gamma function.
+    nrlTc = np.zeros((len(uniqueCond), len(condRmp)))
+    for ind, uniCond in enumerate(uniqueCond):
+        indPos = np.where(condRmp == uniCond)[0]
+        nrlTc[ind, indPos] = 1
 
-    Source:
-    http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
-    """
-    vecX = np.arange(0, varNumVol, 1)
+    # %% convolve with hrf function
 
-    # Expected time of peak of HRF [s]:
-    varHrfPeak = 6.0 / varTr
-    # Expected time of undershoot of HRF [s]:
-    varHrfUndr = 12.0 / varTr
-    # Scaling factor undershoot (relative to peak):
-    varSclUndr = 0.35
+    # create canonical hrf response
+    vecHrf = funcHrf(nrlTc.shape[1], expectedTR)
 
-    # Gamma pdf for the peak
-    vecHrfPeak = gamma.pdf(vecX, varHrfPeak)
-    # Gamma pdf for the undershoot
-    vecHrfUndr = gamma.pdf(vecX, varHrfUndr)
-    # Combine them
-    vecHrf = vecHrfPeak - varSclUndr * vecHrfUndr
+    # prepare arrays for convolution by zeropadding
+    nrlTcCnvl = np.zeros(nrlTc.shape)
 
-    # Scale maximum of HRF to 1.0:
-    vecHrf = np.divide(vecHrf, np.max(vecHrf))
+    vecHrf = np.append(vecHrf, np.zeros(100))
+    nrlTc = np.concatenate((nrlTc, np.zeros((nrlTc.shape[0], 100))), axis=1)
 
-    return vecHrf
+    # Convolve design matrix with HRF model:
+    for ind, tc in enumerate(nrlTc):
+        nrlTcCnvl[ind, :] = np.convolve(tc, vecHrf,
+                                        mode='full')[:nrlTc.shape[1]-100]
 
-# create canonical hrf response
-vecHrf = funcHrf(nrlTc.shape[1], expectedTR)
+    # %% correlation module
 
-# prepare arrays for convolution by zeropadding
-nrlTcCnvl = np.zeros(nrlTc.shape)
-
-vecHrf = np.append(vecHrf, np.zeros(100))
-nrlTc = np.concatenate((nrlTc, np.zeros((nrlTc.shape[0], 100))), axis=1)
-
-# Convolve design matrix with HRF model:
-for ind, tc in enumerate(nrlTc):
-    nrlTcCnvl[ind, :] = np.convolve(tc, vecHrf,
-                                    mode='full')[:nrlTc.shape[1]-100]
-
-# %% correlation module
-targetCorr = 0.1
-corrSwitch = True
-while corrSwitch:
     corrMatrix = np.corrcoef(nrlTcCnvl)
     corrMatrixHalf = corrMatrix[np.triu_indices_from(corrMatrix, k=1)]
-    corrSwitch = np.invert(np.all(np.less(corrMatrixHalf, targetCorr)))
+    tempMax = np.max(np.abs(corrMatrixHalf))
+    print("---attempt " + str(att))
+    print("------max " + str(tempMax))
+    print("------mean " + str(np.mean(np.abs(corrMatrixHalf))))
 
+    if np.less(tempMax, varCorrTmpWnr):
+        varCorrTmpWnr = np.copy(tempMax)
+        presOrderTmpWnr = np.copy(presOrder)
+        tempVals = np.copy(corrMatrixHalf)
 
 # %% save the results
 
-nrOfHyperCombis = len(lstHyperCond)
-
 for ind in np.arange(nrRuns):
 
     # get hyper condition order
     hyperCondOrder = lstHyperCond[ind % nrOfHyperCombis]
     # create conditions by concatenating presOrder and hyperCondOrder
-    conditions = np.vstack((presOrder, hyperCondOrder)).T
+    conditions = np.vstack((presOrderTmpWnr, hyperCondOrder)).T
+
+    # get target times and types
+    targets, targetType = prepareTargets(len(lstHyperCond[0]), expectedTR,
+                                         targetDuration, targetDist)
 
     strPathParentUp = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..'))
@@ -164,9 +155,7 @@ for ind in np.arange(nrRuns):
              expectedTR=expectedTR)
 
 
-# get target times
-targets, targetType = prepareTargets(len(lstHyperCond[0]), expectedTR,
-                                     targetDuration, targetDist)
+
 
 
 

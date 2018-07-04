@@ -7,6 +7,7 @@ Created on Mon Oct 30 18:53:04 2017
 import itertools
 import numpy as np
 from scipy import spatial, signal
+from scipy.stats import gamma
 
 
 def cart2pol(x, y):
@@ -285,7 +286,7 @@ def randomizePresOrder(nrOfApertures, numRep, trialDist):
     # turn trial numbers into unique condition identifiers
     trials = trials + (nrOfApertures * np.arange(numRep))[:, None]
 
-    return trials
+    return trials.flatten()
 
 
 def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
@@ -320,7 +321,7 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
     for ind in np.arange(nrOfCond):
         # get randomized presentation of aperture order
         randpresOrder = randomizePresOrder(nrOfApertures,
-                                           numRep, trialDist).flatten()
+                                           numRep, trialDist)
         # add barApertures
         presOrder = np.hstack((presOrder, randpresOrder))
         if ind in np.arange(nrOfCond)[:-1]:
@@ -417,6 +418,34 @@ def prepareTargets(condLen, expectedTR, targetDuration, targetDist):
                                              replace=True,
                                              p=np.array([0.5, 0.5]))
     return targets, targetType
+
+
+def funcHrf(varNumVol, varTr):
+    """Create double gamma function.
+
+    Source:
+    http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
+    """
+    vecX = np.arange(0, varNumVol, 1)
+
+    # Expected time of peak of HRF [s]:
+    varHrfPeak = 6.0 / varTr
+    # Expected time of undershoot of HRF [s]:
+    varHrfUndr = 12.0 / varTr
+    # Scaling factor undershoot (relative to peak):
+    varSclUndr = 0.35
+
+    # Gamma pdf for the peak
+    vecHrfPeak = gamma.pdf(vecX, varHrfPeak)
+    # Gamma pdf for the undershoot
+    vecHrfUndr = gamma.pdf(vecX, varHrfUndr)
+    # Combine them
+    vecHrf = vecHrfPeak - varSclUndr * vecHrfUndr
+
+    # Scale maximum of HRF to 1.0:
+    vecHrf = np.divide(vecHrf, np.max(vecHrf))
+
+    return vecHrf
 
 
 def balancedLatinSquares(n):
