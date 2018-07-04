@@ -4,8 +4,10 @@ Created on Mon Oct 30 18:53:04 2017
 
 @author: marian
 """
+import itertools
 import numpy as np
 from scipy import spatial, signal
+from scipy.stats import gamma
 
 
 def cart2pol(x, y):
@@ -251,6 +253,223 @@ def raisedCos(steps, T=0.5, beta=0.5):
         else:
             hf[ind] = 0
     return hf
+
+
+def randomizePresOrder(nrOfApertures, numRep, trialDist):
+    """Generate trials in randomized order with particular distance.
+    Parameters
+    ----------
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    trialDist : int, positive
+        The minimum distance between two neighboring trials
+    Returns
+    -------
+    trials : np.array, [numRep, nrOfApertures]
+        array with randomized trial order
+    """
+    trialSwitch = True
+    while trialSwitch:
+        # prepare presentation order
+        trials = np.tile(np.linspace(1, nrOfApertures, nrOfApertures),
+                         (numRep, 1))
+        # shuffle every row independetly
+        idx = np.argsort(np.random.random(trials.shape), axis=1)
+        trials = trials[np.arange(trials.shape[0])[:, None], idx]
+        # check whether any difference between neighbors is smaller than
+        # trialDist. If so, continue the loop, if not interrupt
+        trialSwitch = np.invert(
+            np.all(np.all(np.abs(np.diff(trials)) >= trialDist, axis=1)))
+
+    # turn trial numbers into unique condition identifiers
+    trials = trials + (nrOfApertures * np.arange(numRep))[:, None]
+
+    return trials.flatten()
+
+
+def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
+                     nrNullTrialEnd, nrNullTrialReps, nrOfApertures, numRep,
+                     trialDist):
+    """Arrange presentation order by adding blank trials and randomized blocks.
+    Parameters
+    ----------
+    nrOfCond : int, positive
+        Number of "hyper" conditions, here: the number of motion conditions
+    nrNullTrialStart : int, positive
+        Number of blank trials in the beginning
+    nrNullTrialBetw : int, positive
+        Number of blank trials in-between
+    nrNullTrialEnd : int, positive
+        Number of blank trials in the end
+    nrNullTrialReps : int, positive
+        Number of blank trials between repetition blocks
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    trialDist : int, positive
+        The minimum distance between two neighboring trials
+    Returns
+    -------
+    presOrder : np.array
+        Array with presentation order including blank trials
+    """
+    # initialize array for presentation order
+    presOrder = np.array([])
+    # add initial blank period
+    presOrder = np.hstack((presOrder, np.zeros(nrNullTrialStart)))
+    # loop over conditions to add randomized presentation of aperture order
+    for ind in np.arange(nrOfCond):
+        # get randomized presentation of aperture order
+        randpresOrder = randomizePresOrder(nrOfApertures,
+                                           numRep, trialDist)
+        # if desired by user add null trials between repetition blocks
+        if nrNullTrialReps > 0:
+            randpresOrder = np.insert(
+                randpresOrder,
+                np.repeat(np.linspace(0, nrOfApertures*numRep, numRep,
+                          endpoint=False)[1:],
+                          nrNullTrialReps),
+                np.zeros(nrNullTrialReps))
+        # add randomized aperture order
+        presOrder = np.hstack((presOrder, randpresOrder))
+        if ind in np.arange(nrOfCond)[:-1]:
+            # add inbetween blank period
+            presOrder = np.hstack((presOrder, np.zeros(nrNullTrialBetw)))
+    # add ending blank period
+    presOrder = np.hstack((presOrder, np.zeros(nrNullTrialEnd)))
+
+    return presOrder
+
+
+def arrangeHyperCondOrder(nrOfHyperCond, nrNullTrialStart, nrNullTrialBetw,
+                          nrNullTrialEnd, nrNullTrialReps, nrOfApertures,
+                          numRep):
+    """Arrange presentation order of hyper conditions by adding blank trials.
+    Parameters
+    ----------
+    nrOfHyperCond : int, positive
+        Number of "hyper" conditions, here: the number of motion conditions
+    nrNullTrialStart : int, positive
+        Number of blank trials in the beginning
+    nrNullTrialBetw : int, positive
+        Number of blank trials in-between
+    nrNullTrialEnd : int, positive
+        Number of blank trials in the end
+    nrNullTrialReps : int, positive
+        Number of blank trials between repetition blocks
+    nrOfApertures : int, positive
+        Number of different spatial apertures
+    numRep : int, positive
+        Number of different aperture constellations
+    Returns
+    -------
+    lstHyperCond : list
+        List containing arrays with hyper conditions
+    """
+    # get all possible combination orders of elements [1, 2, 3],
+    # representing flicker, expanding or contracting motion
+    lst = list(itertools.permutations(np.arange(nrOfHyperCond)+1,
+                                      nrOfHyperCond))
+    for ind, item in enumerate(lst):
+        lst[ind] = list(np.hstack(item))
+    hyperCondCombis = np.array(lst)
+
+    # loop over all possible combinations of hyper conditions to arrange
+    # identifiers in line with blank trials
+    lstHyperCond = []
+    for hyperCondSeq in hyperCondCombis:
+        # initialize array for hyperCondOrder order
+        hyperCondOrder = np.array([])
+        # add initial blank period
+        hyperCondOrder = np.hstack((hyperCondOrder,
+                                    np.zeros(nrNullTrialStart)))
+        # loop over hyper condition combination to add hyper condition
+        # identifier
+        for indHyperCond, hyperCond in enumerate(hyperCondSeq):
+            # add hyper condition identifier
+            condInd = np.ones(nrOfApertures*numRep)*hyperCond
+            # if desired by user add null trials between repetition blocks
+            if nrNullTrialReps > 0:
+                condInd = np.insert(condInd,
+                                    np.repeat(np.linspace(0,
+                                                          nrOfApertures*numRep,
+                                                          numRep,
+                                                          endpoint=False)[1:],
+                                              nrNullTrialReps),
+                                    np.zeros(nrNullTrialReps))
+            # add condInd to hyperCondOrder
+            hyperCondOrder = np.hstack((hyperCondOrder, condInd))
+            if indHyperCond in np.arange(nrOfHyperCond)[:-1]:
+                # add inbetween blank period
+                hyperCondOrder = np.hstack((hyperCondOrder,
+                                            np.zeros(nrNullTrialBetw)))
+        # add ending blank period
+        hyperCondOrder = np.hstack((hyperCondOrder, np.zeros(nrNullTrialEnd)))
+        # add this hyperCondOrder to the list
+        lstHyperCond.append(hyperCondOrder)
+
+    return lstHyperCond
+
+
+def prepareTargets(condLen, expectedTR, targetDuration, targetDist):
+    """Prepare target timing and target types."""
+    targetSwitch = True
+    while targetSwitch:
+        # prepare targets
+        targetTRs = np.zeros(condLen).astype('bool')
+        targetPos = np.random.choice(np.arange(3), size=condLen,
+                                     replace=True,
+                                     p=np.array([1/3., 1/3., 1/3.]))
+        targetTRs[targetPos == 1] = True
+        nrOfTargets = np.sum(targetTRs)
+
+        # prepare random target onset delay
+        targetOffsetSec = np.random.uniform(0.1,
+                                            expectedTR-targetDuration,
+                                            size=nrOfTargets)
+
+        targets = np.arange(0, condLen*expectedTR, expectedTR)[targetTRs]
+        targets = targets + targetOffsetSec
+        targetSwitch = np.any(np.diff(targets) < targetDist)
+
+    # prepare target type
+    targetType = np.zeros(condLen)
+    targetType[targetTRs] = np.random.choice(np.array([1, 2]),
+                                             size=nrOfTargets,
+                                             replace=True,
+                                             p=np.array([0.5, 0.5]))
+    return targets, targetType
+
+
+def funcHrf(varNumVol, varTr):
+    """Create double gamma function.
+
+    Source:
+    http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
+    """
+    vecX = np.arange(0, varNumVol, 1)
+
+    # Expected time of peak of HRF [s]:
+    varHrfPeak = 6.0 / varTr
+    # Expected time of undershoot of HRF [s]:
+    varHrfUndr = 12.0 / varTr
+    # Scaling factor undershoot (relative to peak):
+    varSclUndr = 0.35
+
+    # Gamma pdf for the peak
+    vecHrfPeak = gamma.pdf(vecX, varHrfPeak)
+    # Gamma pdf for the undershoot
+    vecHrfUndr = gamma.pdf(vecX, varHrfUndr)
+    # Combine them
+    vecHrf = vecHrfPeak - varSclUndr * vecHrfUndr
+
+    # Scale maximum of HRF to 1.0:
+    vecHrf = np.divide(vecHrf, np.max(vecHrf))
+
+    return vecHrf
 
 
 def balancedLatinSquares(n):
