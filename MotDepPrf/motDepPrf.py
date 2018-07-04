@@ -147,7 +147,7 @@ filename = os.path.join(strPathParentUp, 'MaskTextures',
 npzfile = np.load(filename)
 stimTexture = npzfile["stimTexture"].astype('int8')
 
-if expInfo['flicker']:
+if expInfo['flicker'] == True:
     # load predefined angular flicker
     ctrlTexture = npzfile["ctrlTexture"].astype('int8')
 else:
