@@ -290,7 +290,8 @@ def randomizePresOrder(nrOfApertures, numRep, trialDist):
 
 
 def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
-                     nrNullTrialEnd, nrOfApertures, numRep, trialDist):
+                     nrNullTrialEnd, nrNullTrialReps, nrOfApertures, numRep,
+                     trialDist):
     """Arrange presentation order by adding blank trials and randomized blocks.
     Parameters
     ----------
@@ -302,6 +303,8 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
         Number of blank trials in-between
     nrNullTrialEnd : int, positive
         Number of blank trials in the end
+    nrNullTrialReps : int, positive
+        Number of blank trials between repetition blocks
     nrOfApertures : int, positive
         Number of different spatial apertures
     numRep : int, positive
@@ -322,7 +325,15 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
         # get randomized presentation of aperture order
         randpresOrder = randomizePresOrder(nrOfApertures,
                                            numRep, trialDist)
-        # add barApertures
+        # if desired by user add null trials between repetition blocks
+        if nrNullTrialReps > 0:
+            randpresOrder = np.insert(
+                randpresOrder,
+                np.repeat(np.linspace(0, nrOfApertures*numRep, numRep,
+                          endpoint=False)[1:],
+                          nrNullTrialReps),
+                np.zeros(nrNullTrialReps))
+        # add randomized aperture order
         presOrder = np.hstack((presOrder, randpresOrder))
         if ind in np.arange(nrOfCond)[:-1]:
             # add inbetween blank period
@@ -334,7 +345,8 @@ def arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
 
 
 def arrangeHyperCondOrder(nrOfHyperCond, nrNullTrialStart, nrNullTrialBetw,
-                          nrNullTrialEnd, nrOfApertures, numRep):
+                          nrNullTrialEnd, nrNullTrialReps, nrOfApertures,
+                          numRep):
     """Arrange presentation order of hyper conditions by adding blank trials.
     Parameters
     ----------
@@ -346,6 +358,8 @@ def arrangeHyperCondOrder(nrOfHyperCond, nrNullTrialStart, nrNullTrialBetw,
         Number of blank trials in-between
     nrNullTrialEnd : int, positive
         Number of blank trials in the end
+    nrNullTrialReps : int, positive
+        Number of blank trials between repetition blocks
     nrOfApertures : int, positive
         Number of different spatial apertures
     numRep : int, positive
@@ -377,6 +391,16 @@ def arrangeHyperCondOrder(nrOfHyperCond, nrNullTrialStart, nrNullTrialBetw,
         for indHyperCond, hyperCond in enumerate(hyperCondSeq):
             # add hyper condition identifier
             condInd = np.ones(nrOfApertures*numRep)*hyperCond
+            # if desired by user add null trials between repetition blocks
+            if nrNullTrialReps > 0:
+                condInd = np.insert(condInd,
+                                    np.repeat(np.linspace(0,
+                                                          nrOfApertures*numRep,
+                                                          numRep,
+                                                          endpoint=False)[1:],
+                                              nrNullTrialReps),
+                                    np.zeros(nrNullTrialReps))
+            # add condInd to hyperCondOrder
             hyperCondOrder = np.hstack((hyperCondOrder, condInd))
             if indHyperCond in np.arange(nrOfHyperCond)[:-1]:
                 # add inbetween blank period

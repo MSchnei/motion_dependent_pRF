@@ -32,6 +32,7 @@ nrOfCond = 3
 nrNullTrialStart = 7  # 7
 nrNullTrialEnd = 7
 nrNullTrialBetw = 14
+nrNullTrialReps = 2
 
 # set trial distance
 trialDist = 2
@@ -49,7 +50,8 @@ varCorrTmpWnr = 1.0
 # flicker, outward and inward motion
 lstHyperCond = arrangeHyperCondOrder(nrOfCond, nrNullTrialStart,
                                      nrNullTrialBetw, nrNullTrialEnd,
-                                     nrOfApertures, cfg.numRep)
+                                     nrNullTrialReps, nrOfApertures,
+                                     cfg.numRep)
 
 # get the number of possible combinations of all the hyper conditions
 nrOfHyperCombis = len(lstHyperCond)
@@ -58,8 +60,8 @@ for att in np.arange(numAtt):
 
     # %% get presentation order of apertures
     presOrder = arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
-                                 nrNullTrialEnd, nrOfApertures, cfg.numRep,
-                                 trialDist)
+                                 nrNullTrialEnd, nrNullTrialReps,
+                                 nrOfApertures, cfg.numRep, trialDist)
 
     # %% concatenating presOrder and hyperCondOrder
     lstCnd = []
