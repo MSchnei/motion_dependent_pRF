@@ -58,14 +58,15 @@ nrOfHyperCombis = len(lstHyperCond)
 
 for att in np.arange(numAtt):
 
-    # %% get presentation order of apertures
-    presOrder = arrangePresOrder(nrOfCond, nrNullTrialStart, nrNullTrialBetw,
-                                 nrNullTrialEnd, nrNullTrialReps,
-                                 nrOfApertures, cfg.numRep, trialDist)
-
     # %% concatenating presOrder and hyperCondOrder
     lstCnd = []
     for ind in np.arange(nrRuns):
+
+        # %% get presentation order of apertures
+        presOrder = arrangePresOrder(nrOfCond, nrNullTrialStart,
+                                     nrNullTrialBetw, nrNullTrialEnd,
+                                     nrNullTrialReps, nrOfApertures,
+                                     cfg.numRep, trialDist)
 
         # get hyper condition order
         hyperCondOrder = lstHyperCond[ind % nrOfHyperCombis]
@@ -128,17 +129,15 @@ for att in np.arange(numAtt):
 
     if np.less(tempMax, varCorrTmpWnr):
         varCorrTmpWnr = np.copy(tempMax)
-        presOrderTmpWnr = np.copy(presOrder)
+        presOrderTmpWnr = np.copy(lstCnd)
         tempVals = np.copy(corrMatrixHalf)
 
 # %% save the results
 
 for ind in np.arange(nrRuns):
 
-    # get hyper condition order
-    hyperCondOrder = lstHyperCond[ind % nrOfHyperCombis]
-    # create conditions by concatenating presOrder and hyperCondOrder
-    conditions = np.vstack((presOrderTmpWnr, hyperCondOrder)).T
+    # retrieve conditions from winner array
+    conditions = presOrderTmpWnr[ind, ...]
 
     # get target times and types
     targets, targetType = prepareTargets(len(lstHyperCond[0]), expectedTR,
@@ -155,9 +154,3 @@ for ind in np.arange(nrRuns):
     np.savez(filename1, conditions=conditions.astype('int8'), targets=targets,
              targetDuration=targetDuration, targetType=targetType,
              expectedTR=expectedTR)
-
-
-
-
-
-
