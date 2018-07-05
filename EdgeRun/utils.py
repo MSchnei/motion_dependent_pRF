@@ -6,6 +6,7 @@ Created on Mon Oct 30 18:53:04 2017
 """
 import numpy as np
 from scipy import spatial, signal
+from scipy.stats import gamma
 
 
 def cart2pol(x, y):
@@ -252,6 +253,64 @@ def raisedCos(steps, T=0.5, beta=0.5):
             hf[ind] = 0
     return hf
 
+
+def funcHrf(varNumVol, varTr):
+    """Create double gamma function.
+
+    Source:
+    http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
+    """
+    vecX = np.arange(0, varNumVol, 1)
+
+    # Expected time of peak of HRF [s]:
+    varHrfPeak = 6.0 / varTr
+    # Expected time of undershoot of HRF [s]:
+    varHrfUndr = 12.0 / varTr
+    # Scaling factor undershoot (relative to peak):
+    varSclUndr = 0.35
+
+    # Gamma pdf for the peak
+    vecHrfPeak = gamma.pdf(vecX, varHrfPeak)
+    # Gamma pdf for the undershoot
+    vecHrfUndr = gamma.pdf(vecX, varHrfUndr)
+    # Combine them
+    vecHrf = vecHrfPeak - varSclUndr * vecHrfUndr
+
+    # Scale maximum of HRF to 1.0:
+    vecHrf = np.divide(vecHrf, np.max(vecHrf))
+
+    return vecHrf
+
+
+def prepareTargets(condLen, expectedTR, targetDuration, targetDist):
+    """Prepare target timing and target types."""
+    targetSwitch = True
+    while targetSwitch:
+        # prepare targets
+        targetTRs = np.zeros(condLen).astype('bool')
+        targetPos = np.random.choice(np.arange(3), size=condLen,
+                                     replace=True,
+                                     p=np.array([1/3., 1/3., 1/3.]))
+        targetTRs[targetPos == 1] = True
+        nrOfTargets = np.sum(targetTRs)
+
+        # prepare random target onset delay
+        targetOffsetSec = np.random.uniform(0.1,
+                                            expectedTR-targetDuration,
+                                            size=nrOfTargets)
+
+        targets = np.arange(0, condLen*expectedTR, expectedTR)[targetTRs]
+        targets = targets + targetOffsetSec
+        targetSwitch = np.any(np.diff(targets) < targetDist)
+
+    # prepare target type
+    targetType = np.zeros(condLen)
+    targetType[targetTRs] = np.random.choice(np.array([1, 2]),
+                                             size=nrOfTargets,
+                                             replace=True,
+                                             p=np.array([0.5, 0.5]))
+    return targets, targetType
+    
 
 def balancedLatinSquares(n):
     """Create balanced latin square for (incomplete) counterbalanced designs.
