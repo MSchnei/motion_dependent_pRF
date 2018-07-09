@@ -18,7 +18,7 @@ power = False
 # %% SAVING and LOGGING
 
 # Store info about experiment and experimental run
-expName = 'motDepPrf'  # set experiment name here
+expName = 'edgeRun'  # set experiment name here
 expInfo = {
     u'participant': u'pilot',
     u'run': u'01',
